@@ -1393,8 +1393,9 @@ function render(){
 
 /* ---------- Guía de bienvenida ---------- */
 const TSTEPS=[
- {tab:"inicio",ic:"route",t:"Hola, así funciona Mi Malla UP",d:"Ves tu avance, armas tu próximo ciclo y sabes cuándo egresas. Son 5 pasos cortos."},
- {tab:"malla",sel:".cycle .c .tick",ic:"grid",t:"Marca lo que aprobaste",d:"Toca el círculo de tu curso más avanzado y sus requisitos se marcan solos. Si lo estás llevando, toca su nombre y elige «Llevando»."},
+ {tab:"inicio",ic:"route",t:"Hola, así funciona Mi Malla UP",d:"Ves tu avance, armas tu próximo ciclo y sabes cuándo egresas. Son 6 pasos cortos."},
+ {tab:"malla",sel:".cycle .c .tick",ic:"grid",t:"Marca lo que aprobaste",d:"Toca el círculo de tu curso más avanzado y sus requisitos se marcan solos."},
+ {tab:"malla",open:true,sel:"#set-c",ic:"cal",t:"¿Aún lo estás llevando?",d:"Toca el nombre del curso y elige «Llevando». Cuenta para tu proyección sin marcarlo como aprobado. Al terminar el ciclo, cámbialo a «Aprobado»."},
  {tab:"inicio",sel:".cards-cart .cart-b",alt:"#cart",ic:"home",t:"Elige tu próximo ciclo",d:"En Inicio ves los cursos que ya puedes llevar. Toca + para sumarlos y mira tus créditos y tu fecha de egreso."},
  {tab:"proyeccion",sel:".board .sem:not(.now)",alt:".board",ic:"cal",t:"Mira cuándo egresas",d:"La página reparte tus cursos por semestre. Arrastra uno por sus puntos para moverlo; también puedes sumar un verano."},
  {tab:"egreso",sel:".egl",ic:"flag",t:"Revisa qué te falta",d:"Créditos, electivos, Experiencias Formativas, inglés y prácticas. Las concentraciones están en su propia pestaña."},
@@ -1403,6 +1404,7 @@ let TOUR=null,tourPending=false;
 function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)){tourPending=false;startTour();}}
 function startTour(){TOUR={i:0,back:document.activeElement};S.guia.tour=true;persist();document.body.classList.add("touring");showStep();}
 function endTour(){
+  if(TOUR&&TOUR.opened){focusId=null;renderPanel();applyFocus();}
   const t=document.getElementById("tour");t.hidden=true;t.innerHTML="";document.body.classList.remove("touring");
   const b=TOUR&&TOUR.back;TOUR=null;renderGuide();
   const g=document.getElementById("tour-open"),f=g&&!g.hidden?g:b;if(f&&f.focus)f.focus({preventScroll:true});
@@ -1410,7 +1412,9 @@ function endTour(){
 function tourTarget(st){if(!st.sel)return null;const all=[...document.querySelectorAll(st.sel)].filter(e=>e.offsetParent);return all[0]||(st.alt&&document.querySelector(st.alt))||null;}
 function showStep(){
   const st=TSTEPS[TOUR.i];
+  if(TOUR.opened&&!st.open){TOUR.opened=false;focusId=null;renderPanel();applyFocus();}
   if(tab!==st.tab){go(st.tab);}
+  if(st.open&&!focusId){const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]');if(c){openCourse(c.dataset.card);TOUR.opened=true;}}
   const el=tourTarget(st);
   if(el){const tall=el.getBoundingClientRect().height>innerHeight*.45;el.scrollIntoView({block:tall?"start":"center",behavior:"instant"});if(tall)window.scrollBy(0,-(document.getElementById("tabband").offsetHeight+16));}else window.scrollTo(0,0);
   const t=document.getElementById("tour"),n=TSTEPS.length,last=TOUR.i===n-1;
@@ -1424,6 +1428,7 @@ function showStep(){
     ${last?`<p class="small muted t-foot">Puedes volver a verla con el botón «? Guía» de arriba.</p>`:""}
   </div>`;
   TOUR.el=el;placeTour();
+  if(st.open){[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR&&TSTEPS[TOUR.i]===st){TOUR.el=tourTarget(st);placeTour();}},ms));}
   document.getElementById("t-next").focus({preventScroll:true});
 }
 function placeTour(){
