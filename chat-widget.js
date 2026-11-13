@@ -14,7 +14,7 @@
   const BIENVENIDA =
     "¡Hola! Te ayudo a usar Mi Malla UP: marcar tus cursos, armar tu próximo ciclo, ver cuándo egresarías y qué te falta. ¿Qué quieres saber?";
   const SUGERENCIAS = ["¿Cómo empiezo?", "¿Qué plan me corresponde?", "¿Qué es un bloque?", "¿Cuándo egreso?"];
-  const AVISO = "Asistente con IA, no oficial: confirma requisitos y matrícula con DAAR. No compartas datos personales.";
+  const AVISO = "Asistente con IA, no oficial: confirma requisitos con DAAR. Para responder lee tu avance y lo que ves en la página, sin tu nombre.";
   const MSG_ERROR = "Ahora mismo no puedo responder. Inténtalo de nuevo en un momento.";
   const MSG_RED = "No pude conectarme con el asistente. Revisa tu conexión e inténtalo de nuevo.";
 
@@ -29,19 +29,19 @@
 
   const estilos = document.createElement("style");
   estilos.textContent = `
-  .cw{--cw-brand:var(--brand,#0F4C81);--cw-brand-ink:var(--brand-ink,#fff);--cw-surface:var(--surface,#fff);--cw-bg:var(--bg,#F3F6FB);--cw-ink:var(--ink,#12233D);--cw-muted:var(--muted,#55647A);--cw-line:var(--line,#DCE3EE);--cw-body:var(--body,"Segoe UI",system-ui,sans-serif);--cw-display:var(--display,var(--cw-body));--cw-shadow:var(--shadow,0 10px 28px rgba(18,35,61,.18));--cw-scrim:var(--scrim,rgba(8,18,34,.55));--cw-ease:cubic-bezier(0.23,1,0.32,1);--cw-sheet:cubic-bezier(0.32,0.72,0,1);--cw-lift:0px}
+  .cw{--cw-brand:var(--brand,#0F4C81);--cw-brand-ink:var(--brand-ink,#fff);--cw-surface:var(--surface,#fff);--cw-bg:var(--bg,#F3F6FB);--cw-ink:var(--ink,#12233D);--cw-muted:var(--muted,#55647A);--cw-line:var(--line,#DCE3EE);--cw-body:var(--body,"Segoe UI",system-ui,sans-serif);--cw-display:var(--display,var(--cw-body));--cw-shadow:var(--shadow,0 10px 28px rgba(18,35,61,.18));--cw-scrim:var(--scrim,rgba(8,18,34,.55));--cw-ease:cubic-bezier(0.23,1,0.32,1);--cw-sheet:cubic-bezier(0.32,0.72,0,1);--cw-lift:0px;--cw-dx:0px}
   .cw button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 
   /* Botón flotante */
-  .cw-boton{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:8px;height:48px;padding:0 18px 0 14px;border:none;border-radius:999px;background:var(--cw-brand);color:var(--cw-brand-ink);font:600 15px var(--cw-display);box-shadow:var(--cw-shadow);cursor:pointer;transform:translateY(calc(-1 * var(--cw-lift)));transition:transform .2s var(--cw-ease),opacity .15s var(--cw-ease),visibility 0s}
+  .cw-boton{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:8px;height:48px;padding:0 18px 0 14px;border:none;border-radius:999px;background:var(--cw-brand);color:var(--cw-brand-ink);font:600 15px var(--cw-display);box-shadow:var(--cw-shadow);cursor:pointer;transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift)));transition:transform .2s var(--cw-ease),opacity .15s var(--cw-ease),visibility 0s}
   .cw-boton svg{width:22px;height:22px;flex:none}
-  .cw-boton:active{transform:translateY(calc(-1 * var(--cw-lift))) scale(.97)}
+  .cw-boton:active{transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift))) scale(.97)}
   .cw-boton.cw-fuera{opacity:0;visibility:hidden;pointer-events:none;transition:transform .2s var(--cw-ease),opacity .12s var(--cw-ease),visibility 0s linear .12s}
 
   /* Ventana (computadora) */
   .cw-panel{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9002;width:380px;max-width:calc(100vw - 32px);height:var(--cw-h,560px);display:flex;flex-direction:column;background:var(--cw-surface);color:var(--cw-ink);border:1px solid var(--cw-line);border-radius:16px;box-shadow:var(--cw-shadow);overflow:hidden;font:400 15px/1.45 var(--cw-body);transform-origin:100% 100%;
-    opacity:0;visibility:hidden;pointer-events:none;transform:translateY(calc(8px - var(--cw-lift))) scale(.98);transition:transform .15s var(--cw-ease),opacity .15s var(--cw-ease),visibility 0s linear .15s}
-  .cw-panel.cw-abierto{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(calc(-1 * var(--cw-lift)));transition:transform .2s var(--cw-ease),opacity .2s var(--cw-ease),visibility 0s}
+    opacity:0;visibility:hidden;pointer-events:none;transform:translate(calc(-1 * var(--cw-dx)),calc(8px - var(--cw-lift))) scale(.98);transition:transform .15s var(--cw-ease),opacity .15s var(--cw-ease),visibility 0s linear .15s}
+  .cw-panel.cw-abierto{opacity:1;visibility:visible;pointer-events:auto;transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift)));transition:transform .2s var(--cw-ease),opacity .2s var(--cw-ease),visibility 0s}
   .cw-velo{display:none}
 
   .cw-asa{display:none}
@@ -73,8 +73,8 @@
   .cw-aviso{font-size:12px;line-height:1.35;color:var(--cw-muted);text-align:center;padding:0 14px 10px;background:var(--cw-surface)}
   .cw-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  /* Ocultar el botón en la guía de bienvenida y con el panel de un curso abierto */
-  body.touring .cw-boton,body.panel-open .cw-boton{opacity:0;visibility:hidden;pointer-events:none}
+  /* Ocultar el botón durante la guía de bienvenida */
+  body.touring .cw-boton{opacity:0;visibility:hidden;pointer-events:none}
 
   /* Celular: hoja desde abajo */
   @media (max-width:640px){
@@ -99,7 +99,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .cw-boton,.cw-boton.cw-fuera{transition:opacity .15s ease,visibility 0s}
-    .cw-panel,.cw-panel.cw-abierto{transform:translateY(calc(-1 * var(--cw-lift)));transition:opacity .15s ease,visibility 0s linear .15s}
+    .cw-panel,.cw-panel.cw-abierto{transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift)));transition:opacity .15s ease,visibility 0s linear .15s}
     .cw-panel.cw-abierto{transition:opacity .15s ease,visibility 0s}
     .cw-boton:active,.cw-enviar:active:not(:disabled){transform:none}
     .cw-nuevo{animation:cw-aparece .15s ease both}
@@ -208,6 +208,16 @@
       if (r.bottom < vh - 220 || !cruzan(r, zona)) continue; // solo lo que está abajo y en la misma columna
       lift = Math.max(lift, vh - r.top + 12 - base);
     }
+    // Panel de un curso abierto: a la derecha (computadora) se corre a su izquierda; abajo (celular o tableta) sube encima.
+    let dx = 0;
+    const cursoAbierto = document.getElementById("panel");
+    if (visible(cursoAbierto) && document.body.classList.contains("panel-open")) {
+      const r = cursoAbierto.getBoundingClientRect();
+      if (r.left > innerWidth / 2) dx = innerWidth - r.left;
+      else lift = Math.max(lift, vh - r.top + 12 - base);
+    }
+    boton.style.setProperty("--cw-dx", dx + "px");
+    panel.style.setProperty("--cw-dx", esCelular.matches ? "0px" : dx + "px");
     boton.style.setProperty("--cw-lift", lift + "px");
     if (esCelular.matches) {
       panel.style.removeProperty("--cw-lift");
@@ -261,15 +271,23 @@
     pedirUbicar();
   });
   vigia.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  const tamanos = "ResizeObserver" in window ? new ResizeObserver(pedirUbicar) : null;
   const vigilar = () => {
-    for (const id of ["guide", "toast"]) {
+    for (const id of ["guide", "toast", "panel"]) {
       const el = document.getElementById(id);
       if (el && !el.dataset.cwVigilado) {
         el.dataset.cwVigilado = "1";
         vigia.observe(el, { attributes: true, attributeFilter: ["hidden", "class", "style"], childList: true });
+        if (tamanos) tamanos.observe(el);
       }
     }
   };
+  // Cuando terminan de entrar o salir, se vuelve a medir.
+  for (const ev of ["animationend", "transitionend"]) {
+    document.addEventListener(ev, (e) => {
+      if (e.target && ["guide", "toast", "panel"].includes(e.target.id)) pedirUbicar();
+    }, true);
+  }
   vigilar();
   ubicar();
   setTimeout(() => { vigilar(); ubicar(); }, 1500); // la página crea la guía al cargar los datos
@@ -376,6 +394,104 @@
     zona.addEventListener("pointercancel", soltar);
   }
 
+  // ---------- Lo que ve el estudiante: resumen del avance y texto en pantalla ----------
+  // Usa las funciones de la página (credits, plan, PLAN…). Si alguna cambia, el chat sigue funcionando sin ese dato.
+  const MAX_PANTALLA = 3000;
+  const corto = (t, n) => (t.length > n ? t.slice(0, n) + "…" : t);
+  function nombreUsuario() {
+    try { return typeof curUser !== "undefined" && curUser && typeof userName === "function" ? userName(curUser) : ""; } catch { return ""; }
+  }
+  function sinNombre(t) {
+    const n = nombreUsuario();
+    return n && n.length > 1 ? t.split(n).join("[usuario]") : t;
+  }
+  function resumenAvance() {
+    const l = [];
+    try {
+      if (typeof curUser === "undefined" || !curUser) return "No hay usuario creado o elegido.";
+      if (typeof PLAN === "undefined" || !PLAN) return "La malla todavía no cargó.";
+      l.push(`Carrera: ${PLAN.carrera || ""}, ${PLAN.nombrePlan || ""}.`);
+      const k = credits();
+      l.push(`Créditos: ${k.a} aprobados y ${k.c} en curso, de ${TOTAL} para egresar.`);
+      try { const p = plan(); if (p && p.end) l.push(`Egreso estimado por la página: ${p.end}.`); } catch {}
+      if (ELECT_REQ) l.push(`Electivos: ${k.ea + k.ec} de ${ELECT_REQ} créditos (aprobados y en curso).`);
+      const f = PLAN.formativas;
+      if (f) l.push(`Experiencias Formativas: ${f.categorias.filter((q) => S.efe[q.id] === "a").length} de ${f.categorias.length} categorías aprobadas.`);
+      const checks = (PLAN.egreso || []).filter((q) => q.tipo === "check");
+      if (checks.length) l.push("Otros requisitos: " + checks.map((q) => `${q.nombre}: ${S.req[q.id] ? "cumplido" : "pendiente"}`).join("; ") + ".");
+      const nombre = (x) => (typeof label === "function" ? label(x) : x.n);
+      const llevando = COURSES.filter((x) => S.st[x.id] === "c").map(nombre);
+      l.push(`Llevando ahora: ${llevando.length ? llevando.join(", ") : "ninguno"}.`);
+      const aprob = COURSES.filter((x) => S.st[x.id] === "a").map(nombre);
+      l.push(`Aprobados (${aprob.length}): ${aprob.length ? corto(aprob.join(", "), 1200) : "ninguno marcado"}.`);
+      try {
+        const set = passed();
+        const disp = COURSES.filter((x) => !S.st[x.id] && courseState(x, set, k.now) === "o").map(nombre);
+        if (disp.length) l.push(`Puede llevar ya: ${corto(disp.join(", "), 600)}.`);
+      } catch {}
+      if (S.elect && S.elect.length) l.push("Electivos agregados: " + corto(S.elect.map((e) => `${e.name} (${e.st === "a" ? "aprobado" : e.st === "c" ? "llevando" : "pendiente"})`).join(", "), 400) + ".");
+    } catch {
+      l.push("No se pudo leer el avance.");
+    }
+    return l.join("\n");
+  }
+  const textoDe = (el) => (el ? el.innerText.replace(/\n{2,}/g, "\n").trim() : "");
+  // Texto de la parte del contenido que se ve en la pantalla ahora mismo.
+  function textoVisible() {
+    const vista = document.getElementById("view");
+    if (!vista) return "";
+    const partes = [];
+    let largo = 0;
+    const sel = "h2,h3,p,li,summary,.c,.pi,.sem-h,.cycle-h,.row,.erow,.vo,.recb,.ccard,.chip,.mt,.cart-t,.legend,.warn,.headline";
+    for (const el of vista.querySelectorAll(sel)) {
+      if (el.parentElement && el.parentElement.closest(sel)) continue; // ya incluido en su contenedor
+      const r = el.getBoundingClientRect();
+      if (!r.height || r.bottom < 0 || r.top > innerHeight) continue;
+      const t = el.innerText.replace(/\s*\n\s*/g, " · ").trim();
+      if (!t) continue;
+      partes.push(t);
+      largo += t.length;
+      if (largo > MAX_PANTALLA) break;
+    }
+    return corto(partes.join("\n"), MAX_PANTALLA);
+  }
+  // El panel marca con íconos qué requisitos ya se cumplen; aquí se escribe en palabras.
+  function textoPanel(el) {
+    const copia = el.cloneNode(true);
+    copia.querySelectorAll(".reqs li.y").forEach((li) => li.append(" (cumplido)"));
+    copia.querySelectorAll(".reqs li.n").forEach((li) => li.append(" (falta)"));
+    copia.querySelectorAll("button[aria-pressed='true']").forEach((b) => b.append(" (elegido)"));
+    copia.querySelectorAll("select").forEach((s, i) => {
+      const o = el.querySelectorAll("select")[i];
+      s.replaceWith(document.createTextNode(o && o.selectedOptions[0] ? `[${o.selectedOptions[0].textContent}]` : ""));
+    });
+    copia.removeAttribute("id");
+    copia.setAttribute("aria-hidden", "true");
+    copia.style.cssText = "position:fixed;left:-9999px;top:0;width:380px;opacity:0;pointer-events:none;animation:none";
+    document.body.appendChild(copia);
+    const t = textoDe(copia);
+    copia.remove();
+    return t;
+  }
+  function contexto() {
+    const l = [];
+    try {
+      const pest = typeof TABS !== "undefined" && typeof tab !== "undefined" ? (TABS.find((t) => t[0] === tab) || [])[1] : "";
+      if (pest) l.push(`Pestaña abierta: «${pest}».`);
+    } catch {}
+    l.push("Avance:\n" + resumenAvance());
+    const cursoAbierto = document.getElementById("panel");
+    if (visible(cursoAbierto) && document.body.classList.contains("panel-open") && textoDe(cursoAbierto))
+      l.push("Curso abierto en el panel:\n" + corto(textoPanel(cursoAbierto), 1500));
+    const dialogo = document.querySelector("dialog[open]");
+    if (dialogo) l.push("Ventana abierta:\n" + corto(textoDe(dialogo), 800));
+    const aviso = document.getElementById("toast");
+    if (aviso && !aviso.hidden && textoDe(aviso)) l.push("Aviso en pantalla: " + corto(textoDe(aviso), 200));
+    const pantalla = textoVisible();
+    if (pantalla) l.push("Lo que se ve en pantalla:\n" + pantalla);
+    return sinNombre(l.join("\n\n")).slice(0, 7000);
+  }
+
   // ---------- Conversación ----------
   SUGERENCIAS.forEach((t) => {
     const c = document.createElement("button");
@@ -406,7 +522,7 @@
       const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: texto, history: historial.slice(-8) }),
+        body: JSON.stringify({ message: texto, history: historial.slice(-8), context: contexto() }),
       });
       const data = await res.json();
       if (data.reply) respuesta = data.reply;
