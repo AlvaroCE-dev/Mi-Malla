@@ -221,6 +221,8 @@ details>summary{cursor:pointer}
 .imp{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--plan-soft)}
 .imp-l{display:flex;flex-wrap:wrap;gap:8px}
 .codigo{font:700 24px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;padding:14px;border:1.5px dashed var(--line);border-radius:12px;text-align:center;background:var(--bg);user-select:all;-webkit-user-select:all}
+.cod-acc{display:flex;flex-wrap:wrap;gap:8px}
+.cod-acc .btn{text-decoration:none;display:inline-flex;align-items:center}
 .chk{display:flex;gap:10px;align-items:center;min-height:44px}
 .chk input{width:20px;height:20px;accent-color:var(--plan)}
 .carr-f{margin:4px 0 6px;font-size:12.5px;font-weight:700;color:var(--muted);letter-spacing:.02em}
@@ -616,7 +618,8 @@ function previos(){
 window.__cuentas={
   previos:previos,
   registrar:async function(u,c,d){var j=await api("registro",{usuario:u,clave:c,datos:d});if(j.status!==200)return {error:j.error};abrirSesion(j);return {codigo:j.codigo};},
-  entrar:async function(u,c){var j=await api("entrar",{usuario:u,clave:c});if(j.status!==200)return {error:j.error};abrirSesion(j);return {};},
+  entrar:async function(u,c){var j=await api("entrar",{usuario:u,clave:c});if(j.status!==200)return {error:j.error};abrirSesion(j);return {debeCambiar:!!j.debeCambiar};},
+  nuevoCodigo:async function(c){var j=await api("nuevo-codigo",{clave:c},true);return j.status===200?{codigo:j.codigo}:{error:j.error};},
   recuperar:async function(u,cod,c){var j=await api("recuperar",{usuario:u,codigo:cod,nueva:c});if(j.status!==200)return {error:j.error};abrirSesion(j);return {};},
   cambiarClave:async function(a,n){var j=await api("clave",{actual:a,nueva:n},true);return j.status===200?{}:{error:j.error};},
   salir:async function(){await api("salir",{},true);cerrarLocal();location.reload();},
@@ -1284,23 +1287,85 @@ async function crearCuenta(pv,box){
   ocupado(btn,false,"Crear cuenta");
   if(r.error){box.textContent=r.error;box.hidden=false;return;}
   document.getElementById("usr").close();
+  mostrarCodigo(r.codigo,u,()=>{tourPending=true;tryTour();});
+}
+/* Código de recuperación: se muestra una vez, con formas fáciles de guardarlo. */
+let codFin=null;
+function mostrarCodigo(codigo,usuario,fin,titulo){
+  codFin=fin||null;
   const d=document.getElementById("cod-d");
-  d.innerHTML=`<div class="d"><h2 id="cod-t">Guarda tu código de recuperación</h2>
-    <p>Si olvidas tu contraseña, con este código pones una nueva. Solo se muestra ahora: anótalo o tómale una captura.</p>
-    <p class="codigo" id="cod-v">${esc(r.codigo)}</p>
-    <div class="q-actions"><button class="btn ghost" type="button" id="cod-copy">Copiar código</button></div>
+  const texto=`Mi Malla UP: código de recuperación de la cuenta «${usuario}»: ${codigo}. Guárdalo: sirve para poner una contraseña nueva si la olvidas.`;
+  const asunto="Mi código de recuperación de Mi Malla UP";
+  d.innerHTML=`<div class="d"><h2 id="cod-t">${esc(titulo||"Guarda tu código de recuperación")}</h2>
+    <p>Si olvidas tu contraseña, con este código pones una nueva. Solo se muestra ahora: guárdalo de una de estas formas.</p>
+    <p class="codigo" id="cod-v">${esc(codigo)}</p>
+    <div class="cod-acc">
+      <button class="btn ghost" type="button" id="cod-copy">Copiar</button>
+      <a class="btn ghost" id="cod-wa" href="https://wa.me/?text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Enviarme por WhatsApp</a>
+      <a class="btn ghost" id="cod-mail" href="mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}">Enviarme por correo</a>
+      <button class="btn ghost" type="button" id="cod-img">Descargar imagen</button>
+    </div>
+    <p class="small muted">En WhatsApp elige tu propio chat. En el correo, escribe tu dirección como destinatario. ¿Usas Gmail en el navegador? <a href="https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Ábrelo en Gmail</a>.</p>
     <label class="chk"><input type="checkbox" id="cod-chk"> Ya guardé mi código</label>
-    <div class="q-actions"><button class="btn" type="button" id="cod-ok" disabled>Ir a mi malla</button></div></div>`;
-  d.addEventListener("cancel",ev=>ev.preventDefault(),{once:false});
+    <div class="q-actions"><button class="btn" type="button" id="cod-ok" disabled>Continuar</button></div></div>`;
+  d.oncancel=ev=>ev.preventDefault();
   d.showModal();document.getElementById("cod-copy").focus();
   document.getElementById("cod-chk").addEventListener("change",ev=>{document.getElementById("cod-ok").disabled=!ev.target.checked;});
+}
+function descargarCodigo(){
+  const codigo=document.getElementById("cod-v").textContent,usuario=userName(curUser)||"";
+  const c=document.createElement("canvas");c.width=900;c.height=420;const g=c.getContext("2d");
+  g.fillStyle="#F3F6FB";g.fillRect(0,0,900,420);g.fillStyle="#0F4C81";g.fillRect(0,0,900,14);
+  g.fillStyle="#0F4C81";g.font="600 34px system-ui,sans-serif";g.fillText("Mi Malla UP",48,80);
+  g.fillStyle="#12233D";g.font="22px system-ui,sans-serif";g.fillText("Código de recuperación de la cuenta: "+usuario,48,132);
+  g.fillStyle="#FFFFFF";g.fillRect(48,168,804,110);g.strokeStyle="#DCE3EE";g.lineWidth=3;g.setLineDash([10,8]);g.strokeRect(48,168,804,110);
+  g.fillStyle="#12233D";g.font="700 56px ui-monospace,Menlo,Consolas,monospace";g.textAlign="center";g.fillText(codigo,450,242);
+  g.textAlign="left";g.fillStyle="#55647A";g.font="20px system-ui,sans-serif";
+  g.fillText("Úsalo en «Olvidé mi contraseña» para poner una contraseña nueva.",48,330);g.fillText("No lo compartas con nadie.",48,362);
+  c.toBlob(b=>{if(!b)return;const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo-mi-malla-up.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);});
 }
 async function entrarCuenta(){
   const u=document.getElementById("login-u").value.trim(),c=document.getElementById("login-p").value;
   if(!u||!c){errEn("login-err","Escribe tu usuario y tu contraseña.");return;}
   errEn("login-err","");const btn=document.getElementById("login-go");ocupado(btn,true,"Entrando…");
   const r=await CU.entrar(u,c);
-  if(r.error){ocupado(btn,false,"Iniciar sesión");errEn("login-err",r.error);document.getElementById("login-p").select();}
+  if(r.error){ocupado(btn,false,"Iniciar sesión");errEn("login-err",r.error);document.getElementById("login-p").select();return;}
+  if(r.debeCambiar)pedirClaveNueva(c);
+}
+/* Entró con una contraseña temporal del administrador: debe poner una propia y recibe un código nuevo. */
+let claveTemporal="";
+function pedirClaveNueva(temp){
+  claveTemporal=temp;
+  const d=document.getElementById("rec-d");
+  d.innerHTML=`<form class="d" id="fpw-f" novalidate><h2 id="rec-t">Pon tu contraseña nueva</h2>
+    <p class="muted">Entraste con una contraseña temporal. Elige una propia para seguir.</p>
+    <label class="field">Contraseña nueva<input id="fpw-n" type="password" autocomplete="new-password" maxlength="200"></label>
+    <label class="field">Repite la contraseña<input id="fpw-n2" type="password" autocomplete="new-password" maxlength="200"></label>
+    <p class="warn" id="fpw-err" role="alert" hidden></p>
+    <div class="q-actions"><button class="btn" type="submit" id="fpw-go">Guardar contraseña</button></div></form>`;
+  d.oncancel=ev=>ev.preventDefault();
+  d.showModal();document.getElementById("fpw-n").focus();
+}
+async function claveForzada(){
+  const n1=document.getElementById("fpw-n").value,n2=document.getElementById("fpw-n2").value;
+  const msg=n1.length<8?"La contraseña debe tener al menos 8 caracteres.":n1!==n2?"Las contraseñas no coinciden.":n1===claveTemporal?"Elige una contraseña distinta de la temporal.":"";
+  if(msg){errEn("fpw-err",msg);return;}
+  const btn=document.getElementById("fpw-go");ocupado(btn,true,"Guardando…");
+  const r=await CU.cambiarClave(claveTemporal,n1);
+  if(r.error){ocupado(btn,false,"Guardar contraseña");errEn("fpw-err",r.error);return;}
+  const k=await CU.nuevoCodigo(n1);claveTemporal="";
+  const d=document.getElementById("rec-d");d.oncancel=null;d.close();
+  if(k.codigo)mostrarCodigo(k.codigo,userName(curUser),null,"Guarda tu código de recuperación nuevo");
+}
+async function codigoNuevo(){
+  const c=document.getElementById("cod-p").value;
+  if(!c){errEn("codf-err","Escribe tu contraseña.");return;}
+  const btn=document.getElementById("codf-go");ocupado(btn,true,"Generando…");
+  const r=await CU.nuevoCodigo(c);
+  ocupado(btn,false,"Ver mi código nuevo");
+  if(r.error){errEn("codf-err",r.error);return;}
+  document.getElementById("acct-d").close();
+  mostrarCodigo(r.codigo,userName(curUser),null,"Tu código de recuperación nuevo");
 }
 function abrirRecuperar(){
   const d=document.getElementById("rec-d"),u=(document.getElementById("login-u")||{}).value||"";
@@ -1311,7 +1376,7 @@ function abrirRecuperar(){
     <label class="field">Contraseña nueva<input id="rec-p" type="password" autocomplete="new-password" maxlength="200"></label>
     <label class="field">Repite la contraseña<input id="rec-p2" type="password" autocomplete="new-password" maxlength="200"></label>
     <p class="warn" id="rec-err" role="alert" hidden></p>
-    <p class="small muted">¿Perdiste el código? Pídele a quien administra la página que restablezca tu contraseña.</p>
+    <p class="small muted">¿Perdiste el código? Pídele a quien administra la página una contraseña temporal; al entrar con ella pondrás una nueva.</p>
     <div class="q-actions"><button class="btn" type="submit" id="rec-go">Cambiar contraseña</button></div></form>`;
   d.showModal();document.getElementById(u?"rec-c":"rec-u").focus();
 }
@@ -1328,13 +1393,18 @@ function abrirCuenta(){
   const d=document.getElementById("acct-d");
   d.innerHTML=`<div class="d"><div class="d-h"><h2 id="acct-t">Tu cuenta: ${esc(userName(curUser))}</h2><button class="x" type="button" id="acct-x" aria-label="Cerrar">×</button></div>
     <p class="muted">Tu avance se guarda en tu cuenta. En este dispositivo sigues dentro hasta que cierres sesión.</p>
-    <div class="q-actions"><button class="btn ghost" type="button" id="acct-pw">Cambiar contraseña</button><button class="btn ghost" type="button" id="acct-out">Cerrar sesión</button><button class="lnk" type="button" id="acct-del">Eliminar cuenta</button></div>
+    <div class="q-actions"><button class="btn ghost" type="button" id="acct-pw">Cambiar contraseña</button><button class="btn ghost" type="button" id="acct-cod">Nuevo código de recuperación</button><button class="btn ghost" type="button" id="acct-out">Cerrar sesión</button><button class="lnk" type="button" id="acct-del">Eliminar cuenta</button></div>
     <form class="d" id="pw-f" novalidate hidden>
       <label class="field">Contraseña actual<input id="pw-a" type="password" autocomplete="current-password" maxlength="200"></label>
       <label class="field">Contraseña nueva<input id="pw-n" type="password" autocomplete="new-password" maxlength="200"></label>
       <label class="field">Repite la contraseña nueva<input id="pw-n2" type="password" autocomplete="new-password" maxlength="200"></label>
       <p class="warn" id="pw-err" role="alert" hidden></p>
       <div class="q-actions"><button class="btn" type="submit" id="pw-go">Guardar contraseña</button></div></form>
+    <form class="d" id="cod-f" novalidate hidden>
+      <p>¿Perdiste tu código? Te damos uno nuevo y el anterior deja de servir.</p>
+      <label class="field">Escribe tu contraseña para confirmar<input id="cod-p" type="password" autocomplete="current-password" maxlength="200"></label>
+      <p class="warn" id="codf-err" role="alert" hidden></p>
+      <div class="q-actions"><button class="btn" type="submit" id="codf-go">Ver mi código nuevo</button></div></form>
     <form class="d" id="del-f" novalidate hidden>
       <p><b>Se borra tu cuenta con todo tu avance, en todos tus dispositivos.</b> No se puede deshacer.</p>
       <label class="field">Escribe tu contraseña para confirmar<input id="del-p" type="password" autocomplete="current-password" maxlength="200"></label>
@@ -2085,11 +2155,13 @@ document.addEventListener("click",e=>{
   if(t.id==="olvide"){abrirRecuperar();return;}
   if(t.id==="acct"){abrirCuenta();return;}
   if(t.id==="acct-x"||t.id==="rec-x"){t.closest("dialog").close();return;}
-  if(t.id==="acct-pw"){document.getElementById("pw-f").hidden=false;document.getElementById("del-f").hidden=true;document.getElementById("pw-a").focus();return;}
-  if(t.id==="acct-del"){document.getElementById("del-f").hidden=false;document.getElementById("pw-f").hidden=true;document.getElementById("del-p").focus();return;}
+  if(t.id==="acct-pw"){for(const id of ["del-f","cod-f"])document.getElementById(id).hidden=true;document.getElementById("pw-f").hidden=false;document.getElementById("pw-a").focus();return;}
+  if(t.id==="acct-del"){for(const id of ["pw-f","cod-f"])document.getElementById(id).hidden=true;document.getElementById("del-f").hidden=false;document.getElementById("del-p").focus();return;}
   if(t.id==="acct-out"){t.disabled=true;CU.salir();return;}
   if(t.id==="cod-copy"){const c=document.getElementById("cod-v").textContent;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>{t.textContent="Copiado";},()=>{t.textContent="Cópialo a mano";});return;}
-  if(t.id==="cod-ok"){document.getElementById("cod-d").close();tourPending=true;tryTour();return;}
+  if(t.id==="cod-ok"){document.getElementById("cod-d").close();const f=codFin;codFin=null;if(f)f();return;}
+  if(t.id==="cod-img"){descargarCodigo();t.textContent="Imagen descargada";return;}
+  if(t.id==="acct-cod"){for(const id of ["pw-f","del-f"])document.getElementById(id).hidden=true;document.getElementById("cod-f").hidden=false;document.getElementById("cod-p").focus();return;}
   if(t.id==="plan-later"){S.guia.plan27=true;persist();render();return;}
   if(t.id==="plan-ok"){S.guia.planOk=true;persist();render();return;}
   if(t.id==="plan-back"){backPlan();return;}
@@ -2170,6 +2242,8 @@ document.addEventListener("submit",e=>{
   if(e.target.id==="login-f"){e.preventDefault();entrarCuenta();return;}
   if(e.target.id==="rec-f"){e.preventDefault();recuperarCuenta();return;}
   if(e.target.id==="pw-f"){e.preventDefault();cambiarClave();return;}
+  if(e.target.id==="cod-f"){e.preventDefault();codigoNuevo();return;}
+  if(e.target.id==="fpw-f"){e.preventDefault();claveForzada();return;}
   if(e.target.id==="del-f"){e.preventDefault();eliminarCuenta();return;
   }
   if(e.target.id!=="elect-form")return;
