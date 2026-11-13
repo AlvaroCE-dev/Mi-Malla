@@ -1918,12 +1918,13 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 })();
 /* ---------- Guía de bienvenida ---------- */
 const TSTEPS=[
- {tab:"malla",t:"Hola, así funciona Mi Malla UP",d:"Marca tus cursos, arma tu próximo ciclo y mira cuándo egresas. Son 6 pasos cortos."},
+ {tab:"malla",t:"Hola, así funciona Mi Malla UP",d:"Marca tus cursos, arma tu próximo ciclo y mira cuándo egresas. Son 7 pasos cortos."},
  {tab:"malla",sel:"#cy-1",alt:".cycle",t:"Marca lo que aprobaste",d:"Toca el círculo de un curso aprobado. Sus requisitos se marcan solos."},
  {tab:"malla",open:true,sel:"#set-c",t:"¿Aún lo estás llevando?",d:"Elige «Llevando». El curso cuenta en tu proyección sin darlo por aprobado."},
  {tab:"inicio",sel:".cards-cart .c:has(.cart-b)",alt:"#cart",t:"Elige tu próximo ciclo",d:"Toca + en los cursos que quieres llevar. Verás tus créditos y tu fecha de egreso."},
  {tab:"proyeccion",sel:".board .sem:not(.now)",alt:".board",t:"Mira cuándo egresas",d:"Tus cursos ya están repartidos por semestre. Para mover uno, arrástralo por sus puntos."},
- {tab:"egreso",sel:".egl",t:"Revisa qué te falta",d:"Aquí está todo lo que necesitas para egresar: créditos, electivos, inglés y prácticas.",last:true},
+ {tab:"egreso",sel:".egl",t:"Revisa qué te falta",d:"Aquí está todo lo que necesitas para egresar: créditos, electivos, inglés y prácticas."},
+ {tab:"concentraciones",sel:".cfor-s",alt:".ctema",t:"Explora las concentraciones",d:"Son grupos de cursos de una especialidad. Elige hasta 2 y mira cuánto te falta; para inscribirte oficialmente piden 110 créditos.",last:true},
 ];
 let TOUR=null,tourPending=false;
 addEventListener("pointerdown",()=>{document.documentElement.dataset.im="p";},true);
@@ -1972,7 +1973,7 @@ function showStep(){
   document.getElementById("t-next").focus({preventScroll:true});
 }
 /* Ubica el marco y la tarjeta. El marco nunca corta un elemento: si el destino no cabe, se resalta su primera parte completa (encabezado y primeras filas). La tarjeta nunca tapa el marco. */
-const T_PAD=8,T_GAP=12,T_SPLIT=".cycle,.cards,.sem,.sem-b,.egl,.board";
+const T_PAD=8,T_GAP=12,T_SPLIT=".cycle,.cards,.sem,.sem-b,.egl,.board,.cfor-s,.cfor";
 const tourMob=()=>innerWidth<=640;
 const tourHead=()=>{const tb=document.getElementById("tabband");return tb?Math.max(0,tb.getBoundingClientRect().bottom):0;};
 const tourFixed=el=>{for(let n=el;n&&n!==document.body;n=n.parentElement)if(getComputedStyle(n).position==="fixed")return n;return null;};
