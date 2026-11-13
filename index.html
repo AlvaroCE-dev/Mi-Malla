@@ -226,6 +226,8 @@ details>summary{cursor:pointer}
 .cod-acc .btn{text-decoration:none;display:inline-flex;align-items:center}
 .cod-mf{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--plan-soft)}
 .cod-mf p{margin:0}
+.okmsg{background:var(--ok-soft);color:var(--ok);font-size:13px;padding:6px 9px;border-radius:7px;font-weight:600}
+#cod-wa[aria-expanded="true"],#cod-mail[aria-expanded="true"]{border-color:var(--brand);color:var(--brand)}
 .cod-mf .field input{width:100%}
 .chk{display:flex;gap:10px;align-items:center;min-height:44px}
 .chk input{width:20px;height:20px;accent-color:var(--plan)}
@@ -623,6 +625,7 @@ window.__cuentas={
   previos:previos,
   registrar:async function(u,c,d){var j=await api("registro",{usuario:u,clave:c,datos:d});if(j.status!==200)return {error:j.error};abrirSesion(j);return {codigo:j.codigo};},
   entrar:async function(u,c){var j=await api("entrar",{usuario:u,clave:c});if(j.status!==200)return {error:j.error};abrirSesion(j);return {debeCambiar:!!j.debeCambiar};},
+  enviarCodigo:async function(correo,codigo){var j=await api("enviar-codigo",{correo:correo,codigo:codigo},true);return j.status===200?{}:{error:j.error,sinConfig:!!j.sinConfig};},
   nuevoCodigo:async function(c){var j=await api("nuevo-codigo",{clave:c},true);return j.status===200?{codigo:j.codigo}:{error:j.error};},
   recuperar:async function(u,cod,c){var j=await api("recuperar",{usuario:u,codigo:cod,nueva:c});if(j.status!==200)return {error:j.error};abrirSesion(j);return {};},
   cambiarClave:async function(a,n){var j=await api("clave",{actual:a,nueva:n},true);return j.status===200?{}:{error:j.error};},
@@ -1295,29 +1298,34 @@ async function crearCuenta(pv,box){
 }
 /* Código de recuperación: se muestra una vez, con formas fáciles de guardarlo. */
 let codFin=null,codMail=null;
-/* Correo con el código: lo envía el propio estudiante desde su correo; la página no guarda la dirección. */
-function correoCodigo(gmail){
-  const em=document.getElementById("cod-em").value.trim();
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){errEn("cod-em-err","Escribe un correo válido, por ejemplo: tucorreo@gmail.com");document.getElementById("cod-em").focus();return;}
+/* Correo con el código: lo envía el Worker de cuentas (EmailJS); la dirección no se guarda. */
+async function correoCodigo(){
+  const em=document.getElementById("cod-em").value.trim(),ok=document.getElementById("cod-em-ok");ok.hidden=true;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){errEn("cod-em-err","Escribe un correo válido, por ejemplo: tucorreo@gmail.com");document.getElementById("cod-em").focus();return;}
   errEn("cod-em-err","");
-  const {codigo,usuario}=codMail||{},asunto="⭐ Tu código de recuperación de Mi Malla UP";
-  const cuerpo=`¡Hola!
-
-Este es tu código de recuperación de Mi Malla UP:
-
-    ${codigo}
-
-Cuenta: ${usuario}
-
-Si algún día olvidas tu contraseña, entra a Mi Malla UP, toca «Olvidé mi contraseña» y usa este código para poner una nueva. No se lo compartas a nadie.
-
-Te recomendamos marcar este correo como importante para encontrarlo rápido.
-
-¡Mucho éxito en tu camino al egreso!
-Mi Malla UP`;
-  const url=gmail?`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(em)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`:`mailto:${encodeURIComponent(em)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-  if(gmail)window.open(url,"_blank","noopener");else location.href=url;
-  document.getElementById("cod-mail").textContent="Correo listo para enviar";
+  const btn=document.getElementById("cod-em-go");ocupado(btn,true,"Enviando…");
+  const r=await CU.enviarCodigo(em,codMail.codigo);
+  ocupado(btn,false,"Enviarme el código");
+  if(r.error){
+    if(r.sinConfig){
+      const asunto="⭐ Tu código de recuperación de Mi Malla UP",cuerpo=`¡Hola!\n\nEste es tu código de recuperación de Mi Malla UP:\n\n    ${codMail.codigo}\n\nCuenta: ${codMail.usuario}\n\nSi algún día olvidas tu contraseña, entra a Mi Malla UP, toca «Olvidé mi contraseña» y usa este código para poner una nueva. No se lo compartas a nadie.\n\n¡Mucho éxito en tu camino al egreso!`;
+      document.getElementById("cod-em-err").innerHTML=`El envío automático todavía no está activado. Mientras tanto, <a href="https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(em)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}" target="_blank" rel="noopener">envíatelo desde Gmail</a>.`;
+      document.getElementById("cod-em-err").hidden=false;
+    }else errEn("cod-em-err",r.error);
+    return;
+  }
+  ok.textContent=`¡Listo! Te lo enviamos a ${em}. Si no lo ves en unos minutos, revisa Spam o Promociones.`;ok.hidden=false;
+  document.getElementById("cod-mail").textContent="Enviado por correo ✓";
+}
+/* WhatsApp: abre el chat del número escrito con el mensaje listo. */
+function whatsappCodigo(){
+  let d=document.getElementById("cod-tel").value.replace(/[^\d+]/g,"");
+  const intl=d.startsWith("+");d=d.replace(/\D/g,"");
+  if(!intl&&d.length===9&&d[0]==="9")d="51"+d;
+  if(d.length<10||d.length>15){errEn("cod-tel-err","Escribe tu número completo, por ejemplo: 987 654 321");document.getElementById("cod-tel").focus();return;}
+  errEn("cod-tel-err","");
+  window.open(`https://wa.me/${d}?text=${encodeURIComponent(codMail.wa)}`,"_blank","noopener");
+  document.getElementById("cod-wa").textContent="WhatsApp abierto ✓";
 }
 function mostrarCodigo(codigo,usuario,fin,titulo){
   codFin=fin||null;
@@ -1330,23 +1338,29 @@ function mostrarCodigo(codigo,usuario,fin,titulo){
 Guárdalo con cariño: si algún día olvidas tu contraseña, con este código pones una nueva en «Olvidé mi contraseña». No se lo compartas a nadie.
 
 ¡Mucho éxito en tu camino al egreso! 💙`;
-  codMail={codigo,usuario};
+  codMail={codigo,usuario,wa};
   d.innerHTML=`<div class="d"><h2 id="cod-t">${esc(titulo||"Guarda tu código de recuperación")}</h2>
     <p>Si olvidas tu contraseña, con este código pones una nueva. Solo se muestra ahora: guárdalo de una de estas formas.</p>
     <p class="codigo" id="cod-v">${esc(codigo)}</p>
     <div class="cod-acc">
       <button class="btn ghost" type="button" id="cod-copy">Copiar</button>
-      <a class="btn ghost" id="cod-wa" href="https://wa.me/?text=${encodeURIComponent(wa)}" target="_blank" rel="noopener">Enviarme por WhatsApp</a>
+      <button class="btn ghost" type="button" id="cod-wa" aria-expanded="false" aria-controls="cod-wf">Enviarme por WhatsApp</button>
       <button class="btn ghost" type="button" id="cod-mail" aria-expanded="false" aria-controls="cod-mf">Enviarme por correo</button>
       <button class="btn ghost" type="button" id="cod-img">Descargar imagen</button>
     </div>
-    <p class="small muted" id="cod-wa-n">En WhatsApp elige tu propio chat («Tú» o tu número) para tenerlo siempre a mano.</p>
     <form class="cod-mf" id="cod-mf" novalidate hidden>
-      <label class="field">¿A qué correo quieres que te llegue?<input id="cod-em" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="tucorreo@ejemplo.com"></label>
-      <p class="small">🔒 Tu correo está a salvo: Mi Malla UP no lo guarda. Solo lo usamos para dejarte el mensaje listo en tu correo; tú lo envías.</p>
+      <label class="field">¿A qué correo quieres que te llegue?<input id="cod-em" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="tucorreo@ejemplo.com" enterkeyhint="send"></label>
+      <p class="small">🔒 Tu correo está a salvo: Mi Malla UP no lo guarda. Solo lo usamos para enviarte este mensaje.</p>
       <p class="small">⭐ Cuando te llegue, márcalo como <b>importante</b> o con estrella para encontrarlo rápido si algún día lo necesitas.</p>
       <p class="warn" id="cod-em-err" role="alert" hidden></p>
-      <div class="q-actions"><button class="btn" type="submit">Abrir mi correo</button><button class="btn ghost" type="button" id="cod-gm">Abrir en Gmail</button></div>
+      <p class="okmsg" id="cod-em-ok" role="status" hidden></p>
+      <div class="q-actions"><button class="btn" type="submit" id="cod-em-go">Enviarme el código</button></div>
+    </form>
+    <form class="cod-mf" id="cod-wf" novalidate hidden>
+      <label class="field">Tu número de WhatsApp<input id="cod-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="987 654 321" enterkeyhint="go"></label>
+      <p class="small">Se abrirá WhatsApp en tu propio chat con el mensaje listo: solo toca <b>Enviar</b>. Si tu número no es de Perú, escríbelo con el código de país (por ejemplo, +57…).</p>
+      <p class="warn" id="cod-tel-err" role="alert" hidden></p>
+      <div class="q-actions"><button class="btn" type="submit">Abrir WhatsApp</button></div>
     </form>
     <label class="chk"><input type="checkbox" id="cod-chk"> Ya guardé mi código</label>
     <div class="q-actions"><button class="btn" type="button" id="cod-ok" disabled>Continuar</button></div></div>`;
@@ -2203,8 +2217,9 @@ document.addEventListener("click",e=>{
   if(t.id==="cod-copy"){const c=document.getElementById("cod-v").textContent;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>{t.textContent="Copiado";},()=>{t.textContent="Cópialo a mano";});return;}
   if(t.id==="cod-ok"){document.getElementById("cod-d").close();const f=codFin;codFin=null;if(f)f();return;}
   if(t.id==="cod-img"){descargarCodigo();t.textContent="Imagen descargada";return;}
-  if(t.id==="cod-mail"){const f=document.getElementById("cod-mf"),abre=f.hidden;f.hidden=!abre;t.setAttribute("aria-expanded",String(abre));if(abre)document.getElementById("cod-em").focus();return;}
-  if(t.id==="cod-gm"){correoCodigo(true);return;}
+  if(t.id==="cod-mail"||t.id==="cod-wa"){const mail=t.id==="cod-mail",f=document.getElementById(mail?"cod-mf":"cod-wf"),otro=document.getElementById(mail?"cod-wf":"cod-mf"),abre=f.hidden;
+    f.hidden=!abre;otro.hidden=true;t.setAttribute("aria-expanded",String(abre));document.getElementById(mail?"cod-wa":"cod-mail").setAttribute("aria-expanded","false");
+    if(abre)document.getElementById(mail?"cod-em":"cod-tel").focus();return;}
   if(t.id==="acct-cod"){for(const id of ["pw-f","del-f"])document.getElementById(id).hidden=true;document.getElementById("cod-f").hidden=false;document.getElementById("cod-p").focus();return;}
   if(t.id==="plan-later"){S.guia.plan27=true;persist();render();return;}
   if(t.id==="plan-ok"){S.guia.planOk=true;persist();render();return;}
@@ -2287,7 +2302,8 @@ document.addEventListener("submit",e=>{
   if(e.target.id==="rec-f"){e.preventDefault();recuperarCuenta();return;}
   if(e.target.id==="pw-f"){e.preventDefault();cambiarClave();return;}
   if(e.target.id==="cod-f"){e.preventDefault();codigoNuevo();return;}
-  if(e.target.id==="cod-mf"){e.preventDefault();correoCodigo(false);return;}
+  if(e.target.id==="cod-mf"){e.preventDefault();correoCodigo();return;}
+  if(e.target.id==="cod-wf"){e.preventDefault();whatsappCodigo();return;}
   if(e.target.id==="fpw-f"){e.preventDefault();claveForzada();return;}
   if(e.target.id==="del-f"){e.preventDefault();eliminarCuenta();return;
   }
