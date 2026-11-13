@@ -186,6 +186,25 @@ details>summary{cursor:pointer}
 .c.blk.hl-self .hx{filter:drop-shadow(0 0 1px var(--plan)) drop-shadow(0 0 1px var(--plan)) drop-shadow(0 0 1px var(--plan))}
 .c .btag{padding:1px 3px}
 .btag svg{width:10px;height:10px;vertical-align:-1px;margin-right:1px}
+.bpick{border:1.5px solid hsl(var(--h) 70% var(--stripe-l));border-radius:14px;padding:10px 12px 12px;margin:0;display:grid;gap:8px;background:hsl(var(--h) var(--tint-s) var(--tint-l));color:hsl(var(--h) 60% var(--tint-ink-l));min-width:0}
+.bpick.vacio{border-style:dashed;border-width:2px}
+.bpick legend{padding:0 6px;margin-left:-6px;font:600 15px/1.3 var(--display)}
+.bp-sub{margin:-4px 0 0;opacity:.9}
+.bopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bopt{display:flex;align-items:flex-start;gap:9px;text-align:left;min-height:60px;padding:10px;border-radius:12px;border:1.5px solid hsl(var(--h) 45% 80%);border-left:6px solid hsl(var(--h) 70% var(--stripe-l));background:var(--surface);color:var(--ink);transition:transform .12s var(--ease-out)}
+.bopt:active:not(:disabled){transform:scale(.98)}
+.bopt .bchk{flex:none;width:21px;height:21px;margin-top:1px;border:2px solid hsl(var(--h) 60% var(--tint-ink-l));border-radius:50%;display:grid;place-items:center}
+.bopt .bchk svg{width:12px;height:12px;visibility:hidden}
+.bopt .btxt{display:grid;gap:2px;min-width:0}
+.bopt .bnm{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.bopt .bmeta{color:var(--muted)}
+.bopt[aria-pressed="true"]{background:hsl(var(--h) var(--solid-s) var(--solid-l));border-color:hsl(var(--h) var(--solid-s) calc(var(--solid-l) - 10%));color:#fff}
+.bopt[aria-pressed="true"] .bmeta{color:inherit;opacity:.85}
+.bopt[aria-pressed="true"] .bchk{background:#fff;border-color:#fff;color:hsl(var(--h) var(--solid-s) var(--solid-l))}
+.bopt[aria-pressed="true"] .bchk svg{visibility:visible}
+.bopt:disabled{opacity:.55;cursor:not-allowed}
+@media (hover:hover) and (pointer:fine){.bopt:not(:disabled):not([aria-pressed="true"]):hover{border-color:hsl(var(--h) 70% var(--stripe-l))}}
+@media (prefers-reduced-motion:reduce){.bopt:active{transform:none!important}}
 .plan-sw{margin-top:6px}
 .plan-sw button{min-height:32px;padding:5px 12px}
 #acct{display:inline-flex;align-items:center;gap:6px;max-width:220px}
@@ -1515,7 +1534,12 @@ function renderPanel(){
   let blockSel="";
   if(x.slot){
     const other=x.grp?S.blocks[x.grp]:"";
-    blockSel=`<label class="field">Curso que llevaste o llevarás<select id="blk"><option value="">Sin elegir</option>${SLOTS[x.slot].filter(o=>o!==other).map(o=>`<option${chosen(x)===o?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+    const ch=chosen(x),bc=PLAN.bloquesCodigos||{},otro=x.grp&&BY[x.grp]?BY[x.grp].n:"";
+    blockSel=`<fieldset class="bpick${ch?"":" vacio"}" style="--h:${hueOf(x.area)}"><legend><b>${ch?"Curso que elegiste en este bloque":"¿Qué curso de este bloque llevaste o llevarás?"}</b></legend>
+      <p class="small bp-sub">${ch?"Puedes cambiarlo cuando quieras.":`Este bloque se cumple con uno de estos ${SLOTS[x.slot].length} cursos. Toca el tuyo.`}</p>
+      <div class="bopts" role="group" aria-label="Cursos del bloque">${SLOTS[x.slot].map(o=>{const cod=bc[o],usado=o===other,ver=VER&&cod&&VER.map&&VER.map[cod];
+        return `<button class="bopt" type="button" data-blk="${esc(o)}" aria-pressed="${ch===o}"${usado?" disabled":""}><span class="bchk" aria-hidden="true">${CHECK}</span><span class="btxt"><span class="bnm">${esc(o)}</span><span class="small bmeta">${esc([cod?"Código "+cod:"",usado?`Ya lo elegiste en «${otro}»`:""].filter(Boolean).join(" · "))}${ver&&!usado?' <span class="vtag">Verano</span>':""}</span></span></button>`;}).join("")}</div>
+      ${ch?'<button class="lnk small" type="button" data-blk="">Quitar elección</button>':""}</fieldset>`;
   }
   const sems=plan().sems,code=x.cod||(PLAN.bloquesCodigos||{})[chosen(x)],fi=code&&CAT[code],cyc=(PLAN.ciclos.find(c=>c.n===x.ci)||{}).nombre||"Ciclo "+x.ci;
   a.hidden=false;
@@ -2048,6 +2072,10 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,dialog");if(!t)return;
   if(t.id==="plan-go"){t.disabled=true;if(CU)cambiarMalla(t.dataset.plan);else switchPlan(t.dataset.plan);return;}
   if(t.dataset.sw){cambiarMalla(t.dataset.sw);return;}
+  if(t.dataset.blk!=null&&focusId&&BY[focusId]&&BY[focusId].slot){const id=focusId,v=t.dataset.blk;if(v)S.blocks[id]=v;else delete S.blocks[id];persist();render();
+    const bc=PLAN.bloquesCodigos||{},e=v&&S.elect.find(y=>y.cod&&y.cod===bc[v]);
+    if(e)showToast(`${e.name} también estaba en tus electivos. Ahora cuenta una sola vez, como curso de bloque.`,false);
+    const f=document.querySelector(v?`.bopt[data-blk="${CSS.escape(v)}"]`:".bopt");if(f)f.focus({preventScroll:true});return;}
   if(t.dataset.imp&&CU){const x=previosLocales().find(q=>q.id===t.dataset.imp);if(x){usrImport=normalize(clone(x.data));const pe=((INDEX&&INDEX.planes)||[]).find(q=>q.id===usrImport.plan);usrStep2(pe?pe.carrera:"");}return;}
   if(t.id==="olvide"){abrirRecuperar();return;}
   if(t.id==="acct"){abrirCuenta();return;}
