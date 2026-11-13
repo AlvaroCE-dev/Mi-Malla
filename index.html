@@ -222,7 +222,11 @@ details>summary{cursor:pointer}
 .imp-l{display:flex;flex-wrap:wrap;gap:8px}
 .codigo{font:700 24px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;padding:14px;border:1.5px dashed var(--line);border-radius:12px;text-align:center;background:var(--bg);user-select:all;-webkit-user-select:all}
 .cod-acc{display:flex;flex-wrap:wrap;gap:8px}
+#cod-mail[aria-expanded="true"]{border-color:var(--brand);color:var(--brand)}
 .cod-acc .btn{text-decoration:none;display:inline-flex;align-items:center}
+.cod-mf{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--plan-soft)}
+.cod-mf p{margin:0}
+.cod-mf .field input{width:100%}
 .chk{display:flex;gap:10px;align-items:center;min-height:44px}
 .chk input{width:20px;height:20px;accent-color:var(--plan)}
 .carr-f{margin:4px 0 6px;font-size:12.5px;font-weight:700;color:var(--muted);letter-spacing:.02em}
@@ -1290,22 +1294,60 @@ async function crearCuenta(pv,box){
   mostrarCodigo(r.codigo,u,()=>{tourPending=true;tryTour();});
 }
 /* Código de recuperación: se muestra una vez, con formas fáciles de guardarlo. */
-let codFin=null;
+let codFin=null,codMail=null;
+/* Correo con el código: lo envía el propio estudiante desde su correo; la página no guarda la dirección. */
+function correoCodigo(gmail){
+  const em=document.getElementById("cod-em").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){errEn("cod-em-err","Escribe un correo válido, por ejemplo: tucorreo@gmail.com");document.getElementById("cod-em").focus();return;}
+  errEn("cod-em-err","");
+  const {codigo,usuario}=codMail||{},asunto="⭐ Tu código de recuperación de Mi Malla UP";
+  const cuerpo=`¡Hola!
+
+Este es tu código de recuperación de Mi Malla UP:
+
+    ${codigo}
+
+Cuenta: ${usuario}
+
+Si algún día olvidas tu contraseña, entra a Mi Malla UP, toca «Olvidé mi contraseña» y usa este código para poner una nueva. No se lo compartas a nadie.
+
+Te recomendamos marcar este correo como importante para encontrarlo rápido.
+
+¡Mucho éxito en tu camino al egreso!
+Mi Malla UP`;
+  const url=gmail?`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(em)}&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`:`mailto:${encodeURIComponent(em)}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  if(gmail)window.open(url,"_blank","noopener");else location.href=url;
+  document.getElementById("cod-mail").textContent="Correo listo para enviar";
+}
 function mostrarCodigo(codigo,usuario,fin,titulo){
   codFin=fin||null;
   const d=document.getElementById("cod-d");
-  const texto=`Mi Malla UP: código de recuperación de la cuenta «${usuario}»: ${codigo}. Guárdalo: sirve para poner una contraseña nueva si la olvidas.`;
-  const asunto="Mi código de recuperación de Mi Malla UP";
+  const wa=`¡Hola! 👋 Este es tu código de recuperación de Mi Malla UP 🎓
+
+🔑 ${codigo}
+👤 Cuenta: ${usuario}
+
+Guárdalo con cariño: si algún día olvidas tu contraseña, con este código pones una nueva en «Olvidé mi contraseña». No se lo compartas a nadie.
+
+¡Mucho éxito en tu camino al egreso! 💙`;
+  codMail={codigo,usuario};
   d.innerHTML=`<div class="d"><h2 id="cod-t">${esc(titulo||"Guarda tu código de recuperación")}</h2>
     <p>Si olvidas tu contraseña, con este código pones una nueva. Solo se muestra ahora: guárdalo de una de estas formas.</p>
     <p class="codigo" id="cod-v">${esc(codigo)}</p>
     <div class="cod-acc">
       <button class="btn ghost" type="button" id="cod-copy">Copiar</button>
-      <a class="btn ghost" id="cod-wa" href="https://wa.me/?text=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Enviarme por WhatsApp</a>
-      <a class="btn ghost" id="cod-mail" href="mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}">Enviarme por correo</a>
+      <a class="btn ghost" id="cod-wa" href="https://wa.me/?text=${encodeURIComponent(wa)}" target="_blank" rel="noopener">Enviarme por WhatsApp</a>
+      <button class="btn ghost" type="button" id="cod-mail" aria-expanded="false" aria-controls="cod-mf">Enviarme por correo</button>
       <button class="btn ghost" type="button" id="cod-img">Descargar imagen</button>
     </div>
-    <p class="small muted">En WhatsApp elige tu propio chat. En el correo, escribe tu dirección como destinatario. ¿Usas Gmail en el navegador? <a href="https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}" target="_blank" rel="noopener">Ábrelo en Gmail</a>.</p>
+    <p class="small muted" id="cod-wa-n">En WhatsApp elige tu propio chat («Tú» o tu número) para tenerlo siempre a mano.</p>
+    <form class="cod-mf" id="cod-mf" novalidate hidden>
+      <label class="field">¿A qué correo quieres que te llegue?<input id="cod-em" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="tucorreo@ejemplo.com"></label>
+      <p class="small">🔒 Tu correo está a salvo: Mi Malla UP no lo guarda. Solo lo usamos para dejarte el mensaje listo en tu correo; tú lo envías.</p>
+      <p class="small">⭐ Cuando te llegue, márcalo como <b>importante</b> o con estrella para encontrarlo rápido si algún día lo necesitas.</p>
+      <p class="warn" id="cod-em-err" role="alert" hidden></p>
+      <div class="q-actions"><button class="btn" type="submit">Abrir mi correo</button><button class="btn ghost" type="button" id="cod-gm">Abrir en Gmail</button></div>
+    </form>
     <label class="chk"><input type="checkbox" id="cod-chk"> Ya guardé mi código</label>
     <div class="q-actions"><button class="btn" type="button" id="cod-ok" disabled>Continuar</button></div></div>`;
   d.oncancel=ev=>ev.preventDefault();
@@ -2161,6 +2203,8 @@ document.addEventListener("click",e=>{
   if(t.id==="cod-copy"){const c=document.getElementById("cod-v").textContent;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>{t.textContent="Copiado";},()=>{t.textContent="Cópialo a mano";});return;}
   if(t.id==="cod-ok"){document.getElementById("cod-d").close();const f=codFin;codFin=null;if(f)f();return;}
   if(t.id==="cod-img"){descargarCodigo();t.textContent="Imagen descargada";return;}
+  if(t.id==="cod-mail"){const f=document.getElementById("cod-mf"),abre=f.hidden;f.hidden=!abre;t.setAttribute("aria-expanded",String(abre));if(abre)document.getElementById("cod-em").focus();return;}
+  if(t.id==="cod-gm"){correoCodigo(true);return;}
   if(t.id==="acct-cod"){for(const id of ["pw-f","del-f"])document.getElementById(id).hidden=true;document.getElementById("cod-f").hidden=false;document.getElementById("cod-p").focus();return;}
   if(t.id==="plan-later"){S.guia.plan27=true;persist();render();return;}
   if(t.id==="plan-ok"){S.guia.planOk=true;persist();render();return;}
@@ -2243,6 +2287,7 @@ document.addEventListener("submit",e=>{
   if(e.target.id==="rec-f"){e.preventDefault();recuperarCuenta();return;}
   if(e.target.id==="pw-f"){e.preventDefault();cambiarClave();return;}
   if(e.target.id==="cod-f"){e.preventDefault();codigoNuevo();return;}
+  if(e.target.id==="cod-mf"){e.preventDefault();correoCodigo(false);return;}
   if(e.target.id==="fpw-f"){e.preventDefault();claveForzada();return;}
   if(e.target.id==="del-f"){e.preventDefault();eliminarCuenta();return;
   }
