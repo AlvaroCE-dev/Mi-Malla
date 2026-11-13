@@ -213,7 +213,11 @@ details>summary{cursor:pointer}
 .auth{max-width:420px}
 .auth-f{display:grid;gap:12px;width:100%}
 .auth-f .field input{width:100%}
-.auth-links{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.auth-links{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;margin:0}
+.auth-new{display:grid;gap:8px;justify-items:start;width:100%;margin-top:6px;padding:14px 16px;border-radius:14px;background:var(--plan-soft);border:1.5px solid var(--plan)}
+.auth-new b{font:600 17px/1.25 var(--display);color:var(--plan)}
+.auth-new p{margin:0}
+.auth-new .btn{font-weight:700}
 .imp{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--plan-soft)}
 .imp-l{display:flex;flex-wrap:wrap;gap:8px}
 .codigo{font:700 24px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;padding:14px;border:1.5px dashed var(--line);border-radius:12px;text-align:center;background:var(--bg);user-select:all;-webkit-user-select:all}
@@ -966,7 +970,7 @@ async function connect(){
     else USERS[curUser]=S;
     cache();
     if(changed||first)render();
-    if(!fromCache&&!dirtyIds.size&&!saving&&!readOnly)setSave("Guardado en tu cuenta");
+    if(!fromCache&&!dirtyIds.size&&!saving&&!readOnly)setSave(CU&&!curUser?"":"Guardado en tu cuenta");
   },err=>{clearTimeout(t);dbRef=null;loaded=true;setSave("Se guarda solo en este navegador");render();});
 }
 function selectUser(id){
@@ -1399,7 +1403,8 @@ function authHTML(){
       <p class="warn" id="login-err" role="alert" hidden></p>
       <button class="btn" type="submit" id="login-go">Iniciar sesión</button>
     </form>
-    <div class="auth-links"><span class="muted">¿Primera vez?</span><button class="btn ghost" type="button" id="user-new2">Crear cuenta</button><button class="lnk" type="button" id="olvide">Olvidé mi contraseña</button></div>
+    <p class="auth-links"><button class="lnk" type="button" id="olvide">Olvidé mi contraseña</button></p>
+    <div class="auth-new"><b>¿Primera vez en Mi Malla UP?</b><p>Elige tu carrera, marca tus cursos y descubre en qué semestre egresas. Toma menos de un minuto.</p><button class="btn sun" type="button" id="user-new2">Empezar mi malla <span aria-hidden="true">→</span></button></div>
   </section>`;
 }
 function renderHead(){
