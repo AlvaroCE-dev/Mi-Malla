@@ -341,6 +341,11 @@ body.panel-open .guide{display:none}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
 .two>section{display:grid;gap:12px;align-content:start;min-width:0}
 form.add{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.sugw{position:relative}
+.sug{position:absolute;left:0;right:0;top:100%;z-index:9;margin:4px 0 0;padding:4px;list-style:none;max-height:min(320px,50vh);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.sug li{min-height:44px;display:flex;align-items:center;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1.25}
+.sug li[aria-selected="true"]{background:color-mix(in srgb,var(--brand) 14%,var(--surface))}
+@media (hover:hover) and (pointer:fine){.sug li:hover{background:color-mix(in srgb,var(--brand) 10%,var(--surface))}}
 form.add .grow{flex:1 1 220px}
 form.add .grow input{width:100%}
 .erow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -657,6 +662,7 @@ body.touring main{padding-bottom:70vh}
 .fx-n.fx-el.s-o rect{fill:hsl(var(--h) var(--tint-s) var(--tint-l));stroke:hsl(var(--h) 45% 60%)}
 .fx-n.sin text.sub{font-style:italic}
 .fx-tip{position:absolute;left:0;top:0;z-index:3;max-width:min(320px,calc(100% - 12px));padding:6px 10px;border-radius:9px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;line-height:1.3;pointer-events:none;box-shadow:var(--shadow)}
+.cenm{display:block;font-weight:500}
 #panel .elf{display:grid;gap:10px}#panel .elf-r{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
 .fx-zoom{position:absolute;right:10px;bottom:10px;z-index:2;display:grid;gap:6px}
 .fx-zoom .btn{width:44px;height:44px;min-height:44px;padding:0;font-size:22px;line-height:1;display:grid;place-items:center;background:var(--surface)}
@@ -1025,7 +1031,7 @@ function traerAvance(oldS,op,np,base){
   /* Electivos de la malla anterior: si su código es obligatorio en 2027, marcan ese curso; si no, siguen como electivos. */
   (oldS.elect||[]).forEach(e=>{
     const t=e.cod&&np.cursos.filter(c=>!c.bloque&&c.codigo===e.cod).map(c=>c.id);
-    if(t&&t.length&&e.st!=="p"){const nuevos=t.filter(i=>put(i,e.st));if(nuevos.length)rep.ok.push({de:e.name,a:t.map(i=>N[i].nombre),st:e.st,how:"codigo"});else rep.ya.push({de:e.name,a:t.map(i=>N[i].nombre)});return;}
+    if(t&&t.length&&e.st!=="p"){n.concAntes=[...new Set([...(n.concAntes||[]),e.cod])];/* sigue contando para concentraciones */const nuevos=t.filter(i=>put(i,e.st));if(nuevos.length)rep.ok.push({de:e.name,a:t.map(i=>N[i].nombre),st:e.st,how:"codigo"});else rep.ya.push({de:e.name,a:t.map(i=>N[i].nombre)});return;}
     if(tieneEl(e.name,e.cod)){if(e.st!=="p")rep.ya.push({de:e.name,a:["tus electivos"]});return;}
     n.elect.push({...clone(e),id:nid()});if(e.st!=="p")rep.el.push({name:e.name,cr:e.cr,st:e.st,prev:true});
   });
@@ -2265,8 +2271,8 @@ function renderElPanel(a){
   ${e?`<div class="seg" role="group" aria-label="Estado del electivo" style="justify-self:start">${[["p","Pendiente"],["c","Llevando"],["a","Aprobado"]].map(([v,tx])=>`<button type="button" data-es="${e.id}" data-v="${v}" aria-pressed="${(e.st||"p")===v}">${tx}</button>`).join("")}</div>
     <button class="lnk" type="button" data-edel="${e.id}" style="justify-self:start">Quitar de mis electivos</button>`
   :`<form class="add elf" id="elect-form">
-      <label class="field">Curso<input id="el-name" list="el-opts" required maxlength="120" placeholder="Busca o escribe el curso"></label>
-      <datalist id="el-opts">${electiveNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+      <div class="field sugw"><label for="el-name">Curso</label><input id="el-name" required maxlength="120" placeholder="Busca o escribe el curso" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="el-sug" autocomplete="off"><ul class="sug" id="el-sug" role="listbox" hidden></ul></div>
+      ${(ELOPTS=electiveNames()).length?"":""}
       <div class="elf-r"><label class="field">Créditos<input id="el-cr" type="number" min="1" max="8" value="${tam}" required></label>
       <label class="field">Estado<select id="el-st"><option value="p">Pendiente</option><option value="c">Llevando</option><option value="a">Aprobado</option></select></label></div>
       <button class="btn" type="submit">Agregar electivo</button></form>`}
@@ -2403,8 +2409,21 @@ function viewPlan(){
     ${efeIn(sem)}</div></section>`).join("")}</div>
   ${p.left.length?`<p class="warn">No pude ubicar: ${esc(p.left.map(i=>i.n).join(", "))}.</p>`:""}`;
 }
+/* Códigos de la malla anterior que reemplaza cada curso de tu malla según la tabla de equivalencias de DAAR.
+   Sirven para concentraciones: si aprobaste el curso nuevo, cumples los requisitos que piden el código antiguo. */
+function eqAntes(){
+  const L=(PLAN&&PLAN.equivalencias&&PLAN.equivalencias.lista)||[],out=[];
+  L.forEach(q=>{const a=(q.a||[]).filter(i=>BY[i]);if(!a.length)return;(q.de||[]).forEach(d=>{if(!a.some(i=>BY[i].cod===d))out.push({cod:d,a});});});
+  return out;
+}
+/* Nombre con que el curso aparece en tu malla, si es distinto del que usa el documento de concentraciones. */
+function nombreEnMalla(cod,nombre){
+  const x=COURSES.find(y=>y.cod===cod);if(x)return normTxt(x.n)===normTxt(nombre)?"":x.n;
+  const q=eqAntes().find(y=>y.cod===cod);return q?q.a.map(i=>BY[i].n).join(" + "):"";
+}
 function mandatoryCodes(){
   const m=new Set(COURSES.filter(x=>x.cod).map(x=>x.cod));
+  eqAntes().forEach(q=>m.add(q.cod));
   const bc=PLAN.bloquesCodigos||{};
   Object.values(S.blocks).forEach(n=>{if(bc[n])m.add(bc[n]);});
   return m;
@@ -2414,6 +2433,7 @@ function heldCodes(includePending){
   const bc=PLAN.bloquesCodigos||{};
   Object.entries(S.blocks).forEach(([id,n])=>{if(S.st[id]&&bc[n])h.add(bc[n]);});
   S.elect.forEach(e=>{if(e.cod&&(includePending||e.st!=="p"))h.add(e.cod);});
+  eqAntes().forEach(q=>{if(q.a.every(i=>S.st[i]))h.add(q.cod);});
   return h;
 }
 function electiveNames(){const m=mandatoryCodes(),own=new Set(S.elect.map(e=>e.cod));return Object.values(CAT).filter(x=>!m.has(x.c)&&!own.has(x.c)).map(x=>x.n).sort((a,b)=>a.localeCompare(b));}
@@ -2455,13 +2475,15 @@ const concLista=c=>(c.listaPorCarrera&&c.listaPorCarrera[PLAN.carrera])||c.lista
 const depPrefix={FIN:"1F",MNI:"1MN"};
 function concStatus(c,claimed=new Set()){
   const allow=(c.obligatoriosPermitidosFacultades||[]).includes(PLAN.facultad);
-  const mand=allow?new Set():mandatoryCodes(),byCod={};
+  const mand=allow?new Set():mandatoryCodes(),byCod={},ant=new Set(S.concAntes||[]);
   S.elect.forEach(e=>{if(e.cod&&!claimed.has(e.cod))byCod[e.cod]=e;});
+  /* electivos de tu malla anterior que ahora son obligatorios: siguen contando para la concentración */
+  ant.forEach(k=>{mand.delete(k);if(byCod[k]||claimed.has(k))return;const x=COURSES.find(y=>y.cod===k),st=x&&S.st[x.id];if(st)byCod[k]={st,cod:k,ant:true};});
   const taken=[],blockedAlt=new Set();
   (c.cursos).forEach(x=>{
     const e=byCod[x.c];if(!e||mand.has(x.c)||blockedAlt.has(x.c))return;
     (c.alternos||[]).forEach(g=>{if(g.includes(x.c))g.forEach(o=>{if(o!==x.c)blockedAlt.add(o);});});
-    taken.push({...x,st:e.st});
+    taken.push({...x,st:e.st,ant:!!e.ant});
   });
   const obl=c.obl||[],oblCods=new Set(obl.flat());
   const oblMiss=obl.filter(g=>!g.some(o=>taken.some(t=>t.c===o)));
@@ -2505,8 +2527,9 @@ function concList(q){
     const chip=!el.ok?el.why:st.unreachable?"No alcanzable con tu malla":st.done?"Créditos cubiertos":`Faltan ${st.need} cr`;
     const courses=c.cursos.map(x=>{
       const t=st.taken.find(y=>y.c===x.c),m=st.mand.has(x.c),cat=CAT[x.c]||x,e=S.elect.find(y=>y.cod===x.c),rq=reqState(cat,h),obl=(c.obl||[]).flat().includes(x.c);
-      return `<li class="ccourse"><span class="ccn">${esc(x.n)} <span class="num muted small">${x.cr} cr</span>${obl?' <span class="eftag">Obligatorio en la concentración</span>':""}</span>
-      <span class="small muted">${m?"Es obligatorio en tu malla: no cuenta.":t?{a:"Aprobado",c:"Llevando",p:"En tus electivos"}[t.st]:esc(rq.t)}</span>
+      const enM=nombreEnMalla(x.c,x.n);
+      return `<li class="ccourse"><span class="ccn">${esc(x.n)} <span class="num muted small">${x.cr} cr</span>${obl?' <span class="eftag">Obligatorio en la concentración</span>':""}${enM?`<span class="small muted cenm">En tu malla: ${esc(enM)}</span>`:""}</span>
+      <span class="small muted">${m?"Es obligatorio en tu malla: no cuenta.":t?{a:"Aprobado",c:"Llevando",p:"En tus electivos"}[t.st]+(t.ant?" (lo llevaste como electivo en tu malla anterior)":""):esc(rq.t)}</span>
       ${!m&&!e&&CAT[x.c]?`<button class="lnk small" type="button" data-addel="${esc(x.c)}">Agregar a electivos</button>`:""}</li>`;}).join("");
     return `<details class="conc${sel?" sel":""}" id="cc-${esc(c.id)}" data-cc="${esc(c.id)}" style="--h:${hueOf((c.cursos[0]||{}).dep)}"${openConc.has(c.id)?" open":""}><summary><span class="cname">${esc(c.nombre)}${rec?' <span class="eftag rec">Recomendada en tu plan</span>':""}${c.variante?`<span class="cvar small muted">${esc(c.variante)}</span>`:""}</span><span class="cstat"><span class="num small">${st.total} de ${st.min} cr</span><span class="cbar" aria-hidden="true"><i style="width:${pctv}%"></i></span><span class="small ${el.ok&&!st.unreachable?"":"muted"}">${esc(chip)}</span></span></summary>
       <div class="cbody">${el.ok&&!st.unreachable?`<button class="btn${sel?"":" ghost"}" type="button" data-pickc="${esc(c.id)}"${!sel&&S.conc.length>=CONC.reglas.maximo?" disabled":""}>${sel?"Quitar de mis concentraciones":"Elegir esta concentración"}</button>`:""}
@@ -2558,10 +2581,13 @@ function viewConc(){
 }
 function searchResults(q){
   if(catStatus!=="listo")return `<p class="empty">${catStatus==="error"?"No pude abrir el catálogo de cursos.":"Cargando el catálogo…"}</p>`;
-  const toks=normTxt(q).split(" ").filter(x=>x.length>1);
+  const toks=normTxt(q).split(" ").filter(Boolean);
   if(!toks.length)return `<p class="empty">Hay ${Object.keys(CAT).length} cursos en el catálogo. Busca por nombre o tema, como "Power BI", "Lean" o "regresión".</p>`;
   const h=heldCodes(false),m=mandatoryCodes();
-  const scored=Object.values(CAT).map(x=>{const n=normTxt(x.n),b=normTxt([x.cont,x.logro,x.sum].join(" "));if(!toks.every(t=>n.includes(t)||b.includes(t)))return null;return {x,sc:toks.filter(t=>n.includes(t)).length*10+toks.filter(t=>b.includes(t)).length};}).filter(Boolean).sort((a,b)=>b.sc-a.sc||a.x.n.localeCompare(b.x.n));
+  /* una sola letra busca palabras del nombre que empiecen con ella; desde dos letras, en nombre y sumilla */
+  const scored=Object.values(CAT).map(x=>{const n=normTxt(x.n),ws=n.split(" "),b=normTxt([x.cont,x.logro,x.sum].join(" "));
+    const inN=t=>t.length===1?ws.some(w=>w.startsWith(t)):n.includes(t),inB=t=>t.length>1&&b.includes(t);
+    if(!toks.every(t=>inN(t)||inB(t)))return null;return {x,sc:toks.filter(inN).length*10+toks.filter(inB).length+(n.startsWith(toks[0])?5:0)};}).filter(Boolean).sort((a,b)=>b.sc-a.sc||a.x.n.localeCompare(b.x.n));
   if(!scored.length)return '<p class="empty">Ningún curso coincide. Prueba con otra palabra.</p>';
   const show=scored.slice(0,40);
   const concsOf=c=>CONC?CONC.concentraciones.filter(z=>z.cursos.some(y=>y.c===c)&&concElig(z).ok).map(z=>z.nombre):[];
@@ -2615,8 +2641,8 @@ function viewElect(){
   return `<section class="group elect-only">
     <div class="group-h"><h2>Electivos</h2><span class="small muted num">${k.ea+k.ec} de ${ELECT_REQ} créditos llevados o aprobados</span></div>
     <form class="add" id="elect-form">
-      <label class="field grow">Curso<input id="el-name" list="el-opts" required maxlength="120" placeholder="Busca o escribe el curso"></label>
-      <datalist id="el-opts">${[...new Set([...blockOptions,...electiveNames()])].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+      <div class="field grow sugw"><label for="el-name">Curso</label><input id="el-name" required maxlength="120" placeholder="Busca o escribe el curso" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="el-sug" autocomplete="off"><ul class="sug" id="el-sug" role="listbox" hidden></ul></div>
+      ${(ELOPTS=[...new Set([...blockOptions,...electiveNames()])]).length?"":""}
       <label class="field">Créditos<input id="el-cr" type="number" min="1" max="8" value="3" required></label>
       <label class="field">Estado<select id="el-st"><option value="p">Pendiente</option><option value="c">Llevando</option><option value="a">Aprobado</option></select></label>
       <button class="btn" type="submit">Agregar</button>
@@ -2926,7 +2952,38 @@ document.addEventListener("toggle",e=>{
   if(t.dataset.cc){if(t.open)openConc.add(t.dataset.cc);else openConc.delete(t.dataset.cc);}
   if(t.dataset.tema){if(t.open)openTema.add(t.dataset.tema);else openTema.delete(t.dataset.tema);}
 },true);
+/* Sugerencias del curso electivo: aparecen desde la primera letra, con teclado (↑ ↓ Enter Esc) y con el dedo. */
+let ELOPTS=[],sugI=-1;
+function sugMatch(q){
+  const t=normTxt(q);if(!t)return [];
+  const r=ELOPTS.map(n=>{const k=normTxt(n),ws=k.split(" ");
+    const sc=k.startsWith(t)?3:ws.some(w=>w.startsWith(t))?2:t.length>1&&k.includes(t)?1:0;return sc?{n,sc}:null;}).filter(Boolean);
+  return r.sort((a,b)=>b.sc-a.sc||a.n.localeCompare(b.n)).slice(0,8).map(x=>x.n);
+}
+function sugShow(){
+  const i=document.getElementById("el-name"),u=document.getElementById("el-sug");if(!i||!u)return;
+  const L=sugMatch(i.value);sugI=-1;
+  u.innerHTML=L.map((n,k)=>`<li role="option" id="sug-${k}" data-sug="${esc(n)}" aria-selected="false">${esc(n)}</li>`).join("");
+  u.hidden=!L.length||(L.length===1&&normTxt(L[0])===normTxt(i.value));i.setAttribute("aria-expanded",String(!u.hidden));i.removeAttribute("aria-activedescendant");
+}
+function sugHide(){const i=document.getElementById("el-name"),u=document.getElementById("el-sug");if(u)u.hidden=true;if(i){i.setAttribute("aria-expanded","false");i.removeAttribute("aria-activedescendant");}sugI=-1;}
+function sugPick(n){
+  const i=document.getElementById("el-name");if(!i)return;i.value=n;sugHide();
+  const cat=catByName(n),cr=document.getElementById("el-cr");if(cat&&cr&&cat.cr)cr.value=cat.cr;/* créditos del catálogo */
+  i.focus();
+}
+document.addEventListener("keydown",e=>{
+  if(e.target.id!=="el-name")return;const u=document.getElementById("el-sug");if(!u||u.hidden)return;
+  const it=[...u.children];if(!it.length)return;
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();sugI=(sugI+(e.key==="ArrowDown"?1:-1)+it.length)%it.length;
+    it.forEach((li,k)=>li.setAttribute("aria-selected",String(k===sugI)));e.target.setAttribute("aria-activedescendant","sug-"+sugI);it[sugI].scrollIntoView({block:"nearest"});}
+  else if(e.key==="Enter"&&sugI>=0){e.preventDefault();sugPick(it[sugI].dataset.sug);}
+  else if(e.key==="Escape"){e.stopPropagation();sugHide();}
+},true);
+document.addEventListener("pointerdown",e=>{const li=e.target.closest&&e.target.closest("#el-sug [data-sug]");if(li){e.preventDefault();sugPick(li.dataset.sug);return;}if(!(e.target.closest&&e.target.closest(".sugw")))sugHide();});
+document.addEventListener("focusout",e=>{if(e.target.id==="el-name")setTimeout(()=>{if(document.activeElement&&document.activeElement.id!=="el-name")sugHide();},0);});
 document.addEventListener("input",e=>{
+  if(e.target.id==="el-name")sugShow();
   if(e.target.id==="m-q"){mallaQ=e.target.value;applyMallaF();}
   if(e.target.id==="conc-q")document.getElementById("conc-out").innerHTML=concList(e.target.value);
   if(e.target.id==="cat-q")document.getElementById("cat-out").innerHTML=searchResults(e.target.value);
