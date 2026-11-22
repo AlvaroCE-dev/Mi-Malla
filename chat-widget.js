@@ -13,7 +13,8 @@
   const TITULO = "Asistente de Mi Malla UP";
   const BIENVENIDA =
     "¡Hola! Te ayudo a usar Mi Malla UP: marcar tus cursos, armar tu próximo ciclo, ver cuándo egresarías y qué te falta. ¿Qué quieres saber?";
-  const SUGERENCIAS = ["¿Cómo empiezo?", "¿Qué plan me corresponde?", "¿Qué es un bloque?", "¿Cuándo egreso?"];
+  const SUGERENCIAS = ["¿Cómo empiezo?", "¿Cómo leo el flujograma?", "¿Dónde pongo mis electivos?", "¿Qué plan me corresponde?"];
+  const NO_SIRVIO = "No me sirvió";
   const AVISO = "Asistente con IA, no oficial: confirma requisitos con DAAR. Para responder lee tu avance y lo que ves en la página, sin tu nombre.";
   const MSG_ERROR = "Ahora mismo no puedo responder. Inténtalo de nuevo en un momento.";
   const MSG_RED = "No pude conectarme con el asistente. Revisa tu conexión e inténtalo de nuevo.";
@@ -61,6 +62,12 @@
 
   .cw-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px;background:var(--cw-bg)}
   .cw-chips[hidden]{display:none}
+  .cw-chips-t{flex-basis:100%;font-size:12.5px;color:var(--cw-muted);margin:0 0 -2px}
+  .cw-otra{align-self:flex-start;margin:-2px 0 2px 2px;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;border:none;border-radius:999px;background:none;color:var(--cw-muted);font:500 13px var(--cw-body);cursor:pointer;transition:transform .12s var(--cw-ease)}
+  .cw-otra svg{width:15px;height:15px;flex:none}
+  .cw-otra:active{transform:scale(.97)}
+  @media (hover:hover) and (pointer:fine){.cw-otra:hover{background:var(--cw-surface);color:var(--cw-ink)}}
+  .cw-otra:focus-visible,.cw-chip:focus-visible{outline:2px solid var(--cw-brand);outline-offset:2px}
   .cw-chip{border:1px solid var(--cw-line);color:var(--cw-ink);background:var(--cw-surface);border-radius:999px;padding:6px 12px;min-height:34px;font:500 13.5px var(--cw-body);cursor:pointer}
 
   .cw-form{display:flex;gap:8px;padding:10px 10px 6px;border-top:1px solid var(--cw-line);background:var(--cw-surface)}
@@ -90,6 +97,7 @@
     .cw-cabecera{padding-top:0;touch-action:none}
     .cw-cerrar{width:44px;height:44px}
     .cw-chip{min-height:40px}
+    .cw-otra{min-height:40px}
     .cw-input{font-size:16px;min-height:44px}
     .cw-enviar{width:48px;min-height:44px;padding:0}
     .cw-enviar svg{display:block}
@@ -101,7 +109,7 @@
     .cw-boton,.cw-boton.cw-fuera{transition:opacity .15s ease,visibility 0s}
     .cw-panel,.cw-panel.cw-abierto{transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift)));transition:opacity .15s ease,visibility 0s linear .15s}
     .cw-panel.cw-abierto{transition:opacity .15s ease,visibility 0s}
-    .cw-boton:active,.cw-enviar:active:not(:disabled){transform:none}
+    .cw-boton:active,.cw-enviar:active:not(:disabled),.cw-otra:active{transform:none}
     .cw-nuevo{animation:cw-aparece .15s ease both}
     @keyframes cw-aparece{from{opacity:0}}
   }
@@ -487,29 +495,71 @@
     if (dialogo) l.push("Ventana abierta:\n" + corto(textoDe(dialogo), 800));
     const aviso = document.getElementById("toast");
     if (aviso && !aviso.hidden && textoDe(aviso)) l.push("Aviso en pantalla: " + corto(textoDe(aviso), 200));
+    // Vista de flujograma: los cursos son un dibujo, así que se leen de sus etiquetas (nombre, créditos y estado).
+    const fx = document.getElementById("fx");
+    if (fx && visible(fx)) {
+      const w = fx.getBoundingClientRect();
+      const vis = [...fx.querySelectorAll("[data-fx],[data-fxe]")].filter((g) => {
+        const r = g.getBoundingClientRect();
+        return r.right > w.left && r.left < w.right && r.bottom > w.top + 30 && r.top < w.bottom;
+      }).map((g) => g.getAttribute("aria-label")).filter(Boolean);
+      l.push(`Vista de la malla: flujograma. Cursos que se ven ahora (${vis.length}): ` + corto(vis.join("; "), 1500));
+    }
     const pantalla = textoVisible();
     if (pantalla) l.push("Lo que se ve en pantalla:\n" + pantalla);
     return sinNombre(l.join("\n\n")).slice(0, 7000);
   }
 
   // ---------- Conversación ----------
-  SUGERENCIAS.forEach((t) => {
-    const c = document.createElement("button");
-    c.type = "button";
-    c.className = "cw-chip";
-    c.textContent = t;
-    c.addEventListener("click", () => preguntar(t));
-    chips.appendChild(c);
-  });
+  // Botones para seguir: las preguntas del inicio, las sugeridas después de cada respuesta
+  // o las opciones cuando el asistente pide aclarar.
+  function ponerChips(lista, aclarar) {
+    chips.replaceChildren();
+    if (!lista || !lista.length) { chips.hidden = true; return; }
+    chips.setAttribute("aria-label", aclarar ? "Elige una opción" : "Preguntas sugeridas");
+    if (aclarar) {
+      const t = document.createElement("p");
+      t.className = "cw-chips-t";
+      t.textContent = "Elige una opción o escribe tu respuesta:";
+      chips.appendChild(t);
+    }
+    lista.forEach((texto) => {
+      const c = document.createElement("button");
+      c.type = "button";
+      c.className = "cw-chip";
+      c.textContent = texto;
+      c.addEventListener("click", () => preguntar(texto));
+      chips.appendChild(c);
+    });
+    chips.hidden = false;
+  }
+  ponerChips(SUGERENCIAS, false);
+
+  // «No me sirvió»: va debajo de la última respuesta y pide otra forma de explicarlo.
+  const ICONO_OTRA =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+  function quitarOtra() {
+    lista.querySelectorAll(".cw-otra").forEach((b) => b.remove());
+  }
+  function ponerOtra() {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cw-otra";
+    b.innerHTML = ICONO_OTRA + "<span>" + NO_SIRVIO + "</span>";
+    b.setAttribute("aria-label", "No me sirvió: pedir que lo explique de otra forma");
+    b.addEventListener("click", () => preguntar(NO_SIRVIO, true));
+    lista.appendChild(b);
+  }
 
   agregar(BIENVENIDA, "bot", false);
 
-  async function preguntar(texto) {
+  async function preguntar(texto, otraVez) {
     texto = texto.trim();
     if (!texto || ocupado) return;
     ocupado = true;
     enviar.disabled = true;
     chips.hidden = true;
+    quitarOtra();
     agregar(texto, "user", false);
     input.value = "";
 
@@ -517,17 +567,20 @@
     escribiendo.classList.add("cw-escribiendo");
     lista.setAttribute("aria-busy", "true");
 
-    let respuesta = MSG_ERROR;
+    let respuesta = MSG_ERROR, sugeridas = [], tipo = "", valida = false;
     try {
       const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: texto, history: historial.slice(-8), context: contexto() }),
+        body: JSON.stringify({ message: texto, history: historial.slice(-8), context: contexto(), ...(otraVez ? { retry: true } : {}) }),
       });
       const data = await res.json();
       if (data.reply) respuesta = data.reply;
       if (data.reply && !data.error) {
+        valida = true;
         historial.push({ role: "user", text: texto }, { role: "model", text: data.reply });
+        sugeridas = Array.isArray(data.chips) ? data.chips.filter((c) => typeof c === "string" && c.trim()).slice(0, 3) : [];
+        tipo = data.kind || "";
       }
     } catch {
       respuesta = MSG_RED;
@@ -536,6 +589,9 @@
     escribiendo.remove();
     lista.removeAttribute("aria-busy");
     agregar(respuesta, "bot", true);
+    if (valida && tipo !== "aclarar") ponerOtra(); // al pedir que aclare, basta con las opciones
+    ponerChips(sugeridas, tipo === "aclarar");
+    lista.scrollTop = lista.scrollHeight;
     ocupado = false;
     enviar.disabled = false;
     if (!tactil.matches && abierto) input.focus({ preventScroll: true });
