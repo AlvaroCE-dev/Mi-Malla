@@ -18,6 +18,9 @@
   const AVISO = "Asistente con IA, no oficial: confirma requisitos con DAAR. Para responder lee tu avance y lo que ves en la página, sin tu nombre.";
   const MSG_ERROR = "Ahora mismo no puedo responder. Inténtalo de nuevo en un momento.";
   const MSG_RED = "No pude conectarme con el asistente. Revisa tu conexión e inténtalo de nuevo.";
+  const MSG_LENTO = "Estoy tardando más de lo normal. Toca la pregunta para intentarlo de nuevo.";
+  const ESPERA_AVISO = 8000;   // ms: a partir de aquí, «Sigo pensando…»
+  const ESPERA_MAX = 45000;    // ms: a partir de aquí se corta y se ofrece reintentar
 
   const historial = [];
   let ocupado = false;
@@ -60,6 +63,34 @@
   @keyframes cw-entra{from{opacity:0;transform:translateY(4px)}}
   .cw-escribiendo{color:var(--cw-muted);font-style:italic}
 
+  /* Respuesta en partes: frase directa, puntos, cursos y botón a la pestaña */
+  .cw-rico{display:grid;gap:9px;white-space:normal}
+  .cw-lead{margin:0;font-weight:500}
+  .cw-puntos{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+  .cw-puntos li{position:relative;padding-left:18px}
+  .cw-puntos li::before{content:"";position:absolute;left:4px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--cw-brand)}
+  .cw-puntos.cw-pasos{counter-reset:paso}
+  .cw-puntos.cw-pasos li{padding-left:30px;counter-increment:paso;min-height:22px}
+  .cw-puntos.cw-pasos li::before{content:counter(paso);left:0;top:.05em;width:21px;height:21px;display:grid;place-items:center;font:700 12px/1 var(--cw-body);color:var(--cw-brand-ink)}
+  .cw-cursos{display:flex;flex-wrap:wrap;gap:6px}
+  .cw-curso{display:inline-flex;align-items:center;min-height:32px;padding:5px 10px;border:1px solid color-mix(in srgb,var(--cw-brand) 32%,var(--cw-line));border-radius:10px;background:color-mix(in srgb,var(--cw-brand) 8%,var(--cw-surface));color:var(--cw-ink);font:500 13.5px/1.25 var(--cw-body);text-align:left}
+  button.cw-curso{cursor:pointer;transition:transform .12s var(--cw-ease)}
+  .cw-mas{align-self:center;font-size:13px;color:var(--cw-muted)}
+  .cw-ir{justify-self:start;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 14px;border:none;border-radius:999px;background:var(--cw-brand);color:var(--cw-brand-ink);font:600 13.5px var(--cw-display);cursor:pointer;transition:transform .12s var(--cw-ease)}
+  .cw-ir svg{width:16px;height:16px;flex:none}
+  button.cw-curso:active,.cw-ir:active{transform:scale(.97)}
+  button.cw-curso:focus-visible,.cw-ir:focus-visible{outline:2px solid var(--cw-brand);outline-offset:2px}
+  @media (hover:hover) and (pointer:fine){button.cw-curso:hover{border-color:var(--cw-brand)}}
+  /* Entrada: la frase primero y luego cada parte, 45 ms después de la anterior */
+  .cw-nuevo .cw-entra{animation:cw-entra .18s var(--cw-ease) both;animation-delay:calc(var(--i,0) * 45ms)}
+  .cw-chips:not([hidden]) .cw-chip{animation:cw-entra .16s var(--cw-ease) both;animation-delay:calc(120ms + var(--i,0) * 30ms)}
+
+  /* Escribiendo: tres puntos */
+  .cw-pensando{display:flex;align-items:center;gap:10px;color:var(--cw-muted);font-size:14px}
+  .cw-puntitos{display:inline-flex;gap:5px;padding:4px 2px}
+  .cw-puntitos i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.45;animation:cw-salto 1.1s var(--cw-ease) infinite;animation-delay:calc(var(--i) * 150ms)}
+  @keyframes cw-salto{0%,55%,100%{transform:translateY(0);opacity:.45}25%{transform:translateY(-4px);opacity:1}}
+
   .cw-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 12px;background:var(--cw-bg)}
   .cw-chips[hidden]{display:none}
   .cw-chips-t{flex-basis:100%;font-size:12.5px;color:var(--cw-muted);margin:0 0 -2px}
@@ -98,6 +129,7 @@
     .cw-cerrar{width:44px;height:44px}
     .cw-chip{min-height:40px}
     .cw-otra{min-height:40px}
+    .cw-curso,.cw-ir{min-height:40px}
     .cw-input{font-size:16px;min-height:44px}
     .cw-enviar{width:48px;min-height:44px;padding:0}
     .cw-enviar svg{display:block}
@@ -109,7 +141,10 @@
     .cw-boton,.cw-boton.cw-fuera{transition:opacity .15s ease,visibility 0s}
     .cw-panel,.cw-panel.cw-abierto{transform:translate(calc(-1 * var(--cw-dx)),calc(-1 * var(--cw-lift)));transition:opacity .15s ease,visibility 0s linear .15s}
     .cw-panel.cw-abierto{transition:opacity .15s ease,visibility 0s}
-    .cw-boton:active,.cw-enviar:active:not(:disabled),.cw-otra:active{transform:none}
+    .cw-boton:active,.cw-enviar:active:not(:disabled),.cw-otra:active,button.cw-curso:active,.cw-ir:active{transform:none}
+    .cw-nuevo .cw-entra,.cw-chips:not([hidden]) .cw-chip{animation:cw-aparece .15s ease both;animation-delay:0s}
+    .cw-puntitos i{animation:cw-tenue 1.4s ease-in-out infinite;animation-delay:calc(var(--i) * 200ms)}
+    @keyframes cw-tenue{50%{opacity:1}}
     .cw-nuevo{animation:cw-aparece .15s ease both}
     @keyframes cw-aparece{from{opacity:0}}
   }
@@ -187,6 +222,100 @@
     div.className = `cw-msg cw-${quien}` + (animar ? " cw-nuevo" : "");
     if (quien === "bot") pintar(div, texto);
     else div.textContent = texto;
+    lista.appendChild(div);
+    lista.scrollTop = lista.scrollHeight;
+    return div;
+  }
+
+  // ---------- Respuesta en partes ----------
+  const ICONO_IR =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+  const sinTilde = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  // Busca un curso de la malla por el nombre que dio el asistente (también el nombre corto o el nuevo).
+  function cursoPorNombre(nombre) {
+    try {
+      const n = sinTilde(nombre);
+      return COURSES.find((x) => sinTilde(x.n) === n || (x.corto && sinTilde(x.corto) === n) ||
+        (typeof fxRen === "function" && fxRen(x.id) && sinTilde(fxRen(x.id).n) === n)) || null;
+    } catch { return null; }
+  }
+  // Abre el curso en «Malla» (en el celular, primero cierra el chat para que se vea).
+  function abrirCurso(id) {
+    try {
+      if (esCelular.matches) abrir(false);
+      if (typeof tab !== "undefined" && tab !== "malla") go("malla");
+      setTimeout(() => {
+        openCourse(id);
+        if (typeof fxReveal === "function") requestAnimationFrame(() => fxReveal(id));
+      }, 60);
+    } catch {}
+  }
+  function irA(nombre) {
+    try {
+      const t = (typeof TABS !== "undefined" ? TABS : []).find((x) => sinTilde(x[1]) === sinTilde(nombre));
+      if (!t) return;
+      if (esCelular.matches) abrir(false);
+      go(t[0]);
+    } catch {}
+  }
+  function agregarRico(p) {
+    const div = document.createElement("div");
+    div.className = "cw-msg cw-bot cw-rico cw-nuevo";
+    let i = 0;
+    const parte = (el) => { el.classList.add("cw-entra"); el.style.setProperty("--i", i++); return el; };
+    const lead = document.createElement("p");
+    lead.className = "cw-lead";
+    pintar(lead, p.lead);
+    div.append(parte(lead));
+    if (p.puntos && p.puntos.length) {
+      const ul = document.createElement(p.pasos ? "ol" : "ul");
+      ul.className = "cw-puntos" + (p.pasos ? " cw-pasos" : "");
+      p.puntos.forEach((t) => { const li = document.createElement("li"); pintar(li, t); ul.append(parte(li)); });
+      div.append(ul);
+    }
+    if (p.cursos && p.cursos.length) {
+      const caja = document.createElement("div");
+      caja.className = "cw-cursos";
+      caja.setAttribute("role", "group");
+      caja.setAttribute("aria-label", "Cursos");
+      p.cursos.slice(0, 6).forEach((nombre) => {
+        const x = cursoPorNombre(nombre);
+        const el = document.createElement(x ? "button" : "span");
+        el.className = "cw-curso";
+        el.textContent = nombre;
+        if (x) {
+          el.type = "button";
+          el.title = "Abrir " + nombre + " en la malla";
+          el.addEventListener("click", () => abrirCurso(x.id));
+        }
+        caja.append(el);
+      });
+      if (p.cursos.length > 6) {
+        const mas = document.createElement("span");
+        mas.className = "cw-mas";
+        mas.textContent = `+${p.cursos.length - 6} más`;
+        caja.append(mas);
+      }
+      div.append(parte(caja));
+    }
+    if (p.ir) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "cw-ir";
+      b.innerHTML = `<span></span>${ICONO_IR}`;
+      b.firstChild.textContent = `Ir a «${p.ir}»`;
+      b.addEventListener("click", () => irA(p.ir));
+      div.append(parte(b));
+    }
+    lista.appendChild(div);
+    lista.scrollTop = lista.scrollHeight;
+    return div;
+  }
+  // «Escribiendo…»: tres puntos; si tarda, se agrega un texto.
+  function pensando() {
+    const div = document.createElement("div");
+    div.className = "cw-msg cw-bot cw-pensando";
+    div.innerHTML = '<span class="cw-puntitos" aria-hidden="true"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i></span><span class="cw-pt"></span><span class="cw-sr">El asistente está escribiendo</span>';
     lista.appendChild(div);
     lista.scrollTop = lista.scrollHeight;
     return div;
@@ -528,6 +657,7 @@
       c.type = "button";
       c.className = "cw-chip";
       c.textContent = texto;
+      c.style.setProperty("--i", chips.children.length);
       c.addEventListener("click", () => preguntar(texto));
       chips.appendChild(c);
     });
@@ -563,32 +693,41 @@
     agregar(texto, "user", false);
     input.value = "";
 
-    const escribiendo = agregar("Escribiendo…", "bot", false);
-    escribiendo.classList.add("cw-escribiendo");
+    const escribiendo = pensando();
     lista.setAttribute("aria-busy", "true");
 
-    let respuesta = MSG_ERROR, sugeridas = [], tipo = "", valida = false;
+    let respuesta = MSG_ERROR, sugeridas = [], tipo = "", valida = false, partes = null;
+    const corte = new AbortController();
+    const aviso = setTimeout(() => { escribiendo.querySelector(".cw-pt").textContent = "Sigo pensando, dame unos segundos más…"; }, ESPERA_AVISO);
+    const limite = setTimeout(() => corte.abort(), ESPERA_MAX);
     try {
       const res = await fetch(WORKER_URL, {
         method: "POST",
+        signal: corte.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: texto, history: historial.slice(-8), context: contexto(), ...(otraVez ? { retry: true } : {}) }),
       });
       const data = await res.json();
       if (data.reply) respuesta = data.reply;
+      if (data.error === "lento") sugeridas = [texto]; // el Worker cortó por tiempo: se ofrece reintentar
       if (data.reply && !data.error) {
         valida = true;
         historial.push({ role: "user", text: texto }, { role: "model", text: data.reply });
         sugeridas = Array.isArray(data.chips) ? data.chips.filter((c) => typeof c === "string" && c.trim()).slice(0, 3) : [];
         tipo = data.kind || "";
+        if (data.parts && typeof data.parts.lead === "string" && data.parts.lead.trim()) partes = data.parts;
       }
-    } catch {
-      respuesta = MSG_RED;
+    } catch (e) {
+      if (e && e.name === "AbortError") { respuesta = MSG_LENTO; sugeridas = [texto]; }
+      else respuesta = MSG_RED;
     }
+    clearTimeout(aviso);
+    clearTimeout(limite);
 
     escribiendo.remove();
     lista.removeAttribute("aria-busy");
-    agregar(respuesta, "bot", true);
+    if (partes) agregarRico(partes);
+    else agregar(respuesta, "bot", true);
     if (valida && tipo !== "aclarar") ponerOtra(); // al pedir que aclare, basta con las opciones
     ponerChips(sugeridas, tipo === "aclarar");
     lista.scrollTop = lista.scrollHeight;
