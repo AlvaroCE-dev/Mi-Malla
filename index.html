@@ -574,7 +574,15 @@ body.touring main{padding-bottom:70vh}
  .t-card[data-dock="bottom"]{top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
  .t-card[data-dock="top"]{top:calc(12px + env(safe-area-inset-top,0px))!important}
 }
-@media (prefers-reduced-motion:reduce){.t-spot,.t-card{transition:none;animation:none}}
+/* La guía viaja: el marco, la sombra y la tarjeta se deslizan al siguiente lugar (0,4 s) y el texto cambia con un fundido corto. */
+.t-spot{transition:left .38s cubic-bezier(.23,1,.32,1),top .38s cubic-bezier(.23,1,.32,1),width .38s cubic-bezier(.23,1,.32,1),height .38s cubic-bezier(.23,1,.32,1)}
+.t-spot.snap{transition:none}
+.t-shade{transition:clip-path .38s cubic-bezier(.23,1,.32,1);animation:tshade .3s ease-out}
+@keyframes tshade{from{opacity:0}}
+.t-card{transition:left .38s cubic-bezier(.23,1,.32,1),top .38s cubic-bezier(.23,1,.32,1)}
+.t-card.swap>*{animation:tfade .22s ease-out}
+@keyframes tfade{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){.t-spot,.t-card,.t-shade{transition:none;animation:none}.t-card.swap>*{animation:none}}
 .mtools .seg{display:flex;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none}
 .mtools .seg button{white-space:nowrap;flex:none}
 .mtools{min-width:0;max-width:100%}
@@ -1322,7 +1330,7 @@ function viewFlujo(){
 /* Encuadre y movimiento */
 function fxApply(){
   const g=document.getElementById("fx-g"),wrap=document.getElementById("fx");if(!g||!wrap||!FX)return;
-  const T=fxT[PLAN.id];fxClamp(T,wrap);g.setAttribute("transform",`translate(${T.x} ${T.y}) scale(${T.s})`);fxTipPos();
+  const T=fxT[PLAN.id];fxClamp(T,wrap);g.setAttribute("transform",`translate(${T.x} ${T.y}) scale(${T.s})`);fxTipPos();try{if(TOUR&&TOUR.el&&wrap.contains(TOUR.el))placeTour();}catch(e){}
   /* El ✓ de los aprobados mantiene un tamaño visible aunque el flujograma esté alejado. */
   const ck=Math.min(2.4,Math.max(1,.75/T.s)).toFixed(1);if(wrap.dataset.ck!==ck){wrap.dataset.ck=ck;wrap.style.setProperty("--ck",ck);}
   document.querySelectorAll("#fx-cyc span").forEach(s=>{const x=+s.dataset.cx*T.s+T.x;s.style.transform=`translateX(${x}px) translateX(-50%)`;s.hidden=x<-60||x>wrap.clientWidth+60;});
@@ -2826,7 +2834,7 @@ let TOUR=null,tourPending=false;
 addEventListener("pointerdown",()=>{document.documentElement.dataset.im="p";},true);
 addEventListener("keydown",e=>{if(!e.metaKey&&!e.ctrlKey&&!e.altKey)document.documentElement.dataset.im="k";},true);
 function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)&&!(tab==="malla"&&vistaFlujo()&&FXplan!==PLAN.id)){tourPending=false;startTour();}}
-function startTour(){TSTEPS=tsteps();TOUR={i:0,back:document.activeElement,forced:true};S.guia.tour=true;persist();document.body.classList.add("touring");showStep();}
+function startTour(){TSTEPS=tsteps();const rm=matchMedia("(prefers-reduced-motion:reduce)").matches;TOUR={i:0,back:document.activeElement,forced:true,intro:!rm};S.guia.tour=true;persist();document.body.classList.add("touring");if(rm)showStep();else{const T0=TOUR;setTimeout(()=>{if(TOUR===T0)showStep();},600);}}
 function endTour(){
   if(TOUR&&TOUR.menu){TOUR.menu=false;closeMenu();}
   if(TOUR&&TOUR.opened){focusId=null;renderPanel();applyFocus();}
@@ -2835,19 +2843,31 @@ function endTour(){
   const gd=document.getElementById("guide");if(gd&&!gd.hidden){gd.classList.remove("hello");void gd.offsetWidth;gd.classList.add("hello");setTimeout(()=>gd.classList.remove("hello"),2600);}
   const g=document.getElementById("tour-open"),f=g&&!g.hidden?g:b;if(f&&f.focus)f.focus({preventScroll:true});
 }
+function tourFrame(noSpot,o,html){
+  const t=document.getElementById("tour");let sh=t.querySelector(".t-shade"),sp=t.querySelector(".t-spot"),cd=t.querySelector(".t-card");
+  const had=!!cd;
+  if(!had){t.innerHTML=`<div class="t-shade"></div><div class="t-spot"></div><div class="t-card" role="dialog" aria-modal="true" aria-labelledby="t-tt" tabindex="-1"></div>`;sh=t.querySelector(".t-shade");sp=t.querySelector(".t-spot");cd=t.querySelector(".t-card");}
+  const wasHidden=sp.hidden;sp.hidden=noSpot;
+  if(had&&wasHidden&&!noSpot){sp.classList.add("snap");requestAnimationFrame(()=>requestAnimationFrame(()=>sp.classList.remove("snap")));}
+  cd.classList.toggle("t-move",!!o.move);
+  if(o.center)cd.setAttribute("data-center","");else cd.removeAttribute("data-center");
+  if(o.move)cd.removeAttribute("aria-describedby");else cd.setAttribute("aria-describedby","t-dd");
+  cd.innerHTML=html;
+  if(had){cd.classList.remove("swap");void cd.offsetWidth;cd.classList.add("swap");}
+}
+function tourTrack(ms){if(!TOUR)return;const end=performance.now()+ms,T0=TOUR;const f=()=>{if(TOUR!==T0)return;placeTour();if(performance.now()<end)requestAnimationFrame(f);};requestAnimationFrame(f);}
 function tourPhaseB(){if(!TOUR||!TOUR.phaseA)return;const id=TOUR.phaseA;TOUR.phaseA=null;openCourse(id);TOUR.opened=true;showStep();}
-function fxZoomTo(id){const wrap=document.getElementById("fx"),n=FX&&FX.n[id],T=FX&&fxT[PLAN.id];if(!wrap||!n||!T)return;const v=fxVisible(),s=Math.max(T.s,.9),cx=(v.left+v.right)/2-v.r.left,cy=(v.top+v.bot)/2-v.r.top;fxGo({s,x:cx-(n[0]+n[2]/2)*s,y:cy-(n[1]+n[3]/2)*s},300);}
+function fxZoomTo(id,ms){const wrap=document.getElementById("fx"),n=FX&&FX.n[id],T=FX&&fxT[PLAN.id];if(!wrap||!n||!T)return;const v=fxVisible(),s=Math.max(T.s,.9),cx=(v.left+v.right)/2-v.r.left,cy=(v.top+v.bot)/2-v.r.top;fxGo({s,x:cx-(n[0]+n[2]/2)*s,y:cy-(n[1]+n[3]/2)*s},ms||300);}
 function tourTarget(st){if(!st.sel)return null;const all=[...document.querySelectorAll(st.sel)].filter(e=>e.offsetParent);return all[0]||(st.alt&&document.querySelector(st.alt))||null;}
 function tourMove(st,seq){
   const b=document.querySelector(`#tabs [data-tab="${st.tab}"]`),T=TABS.find(x=>x[0]===st.tab),n=TSTEPS.length,t=document.getElementById("tour");
   if(!b||!T){go(st.tab);showStep();return;}
-  showTabBtn(b);if(b.getBoundingClientRect().bottom>innerHeight||b.getBoundingClientRect().top<0)window.scrollTo(0,0);
+  showTabBtn(b);if(b.getBoundingClientRect().bottom>innerHeight||b.getBoundingClientRect().top<0)window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"instant":"smooth"});
   t.hidden=false;
-  t.innerHTML=`<div class="t-shade"></div><div class="t-spot"></div>
-  <div class="t-card t-move" role="dialog" aria-modal="true" aria-labelledby="t-tt" tabindex="-1">
+  tourFrame(false,{move:true},`
     <div class="t-top"><span class="t-n small">Paso ${TOUR.i+1} de ${n}</span>${TOUR.forced?"":`<button class="t-x" type="button" id="t-skip" aria-label="Cerrar la guía">×</button>`}</div>
     <h2 id="t-tt">Vamos a la pestaña «${esc(T[1])}»</h2><p class="t-tip">Puedes volver a cualquier pestaña cuando quieras.</p>
-  </div>`;
+`);
   TOUR.el=b;placeTour();t.querySelector(".t-card").focus({preventScroll:true});
   setTimeout(()=>{if(!TOUR||TOUR.seq!==seq)return;const dir=tabIdx(st.tab)>=tabIdx(tab)?1:-1;tabVT(()=>{go(st.tab);showTabBtn(document.querySelector('#tabs [aria-current="page"]'));showStep();},dir);},2500);
 }
@@ -2862,10 +2882,13 @@ function showStep(){
   if(st.first&&!TOUR.opened){
     /* Fase A: se resalta un curso del primer ciclo; tras un momento se abre su panel solo (fase B). */
     const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]),id=c?c.dataset.card:f&&f.id;
+    let wait=0;TOUR.intro=TOUR.intro&&!!id;
     if(id){pa=id;TOUR.phaseA=id;
-      if(f){const wp=document.querySelector(".fx-wrap");if(wp)tourScroll(wp);fxZoomTo(id);el=document.querySelector(`.fx-n[data-fx="${id}"]`);}
+      if(f){const wp=document.querySelector(".fx-wrap");if(wp)tourScroll(wp);
+        if(TOUR.intro&&wp){TOUR.intro=false;el=wp;wait=1300;setTimeout(()=>{if(!TOUR||TOUR.seq!==seq||TOUR.phaseA!==id)return;fxZoomTo(id,600);TOUR.el=document.querySelector(`.fx-n[data-fx="${id}"]`);tourTrack(700);},700);}
+        else{fxZoomTo(id);el=document.querySelector(`.fx-n[data-fx="${id}"]`);}}
       else{el=c;tourScroll(el);}
-      setTimeout(()=>{if(TOUR&&TOUR.seq===seq&&TOUR.phaseA===id)tourPhaseB();},2200);}
+      setTimeout(()=>{if(TOUR&&TOUR.seq===seq&&TOUR.phaseA===id)tourPhaseB();},2200+wait);}
   }
   if(!pa){TOUR.phaseA=null;
     if(st.open&&!focusId){const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]);if(c||f){openCourse(c?c.dataset.card:f.id);TOUR.opened=true;}}
@@ -2874,15 +2897,14 @@ function showStep(){
     if(el)tourScroll(el);else window.scrollTo(0,0);}
   const t=document.getElementById("tour"),n=TSTEPS.length,last=TOUR.i===n-1;
   t.hidden=false;
-  t.innerHTML=`<div class="t-shade${el?"":" full"}"></div><div class="t-spot" ${el?"":"hidden"}></div>
-  <div class="t-card" role="dialog" aria-modal="true" aria-labelledby="t-tt" aria-describedby="t-dd"${el?"":' data-center=""'}>
+  tourFrame(!el,{center:!el},`
     <div class="t-top"><span class="t-n small">Paso ${TOUR.i+1} de ${n}</span>${TOUR.forced?"":`<button class="t-x" type="button" id="t-skip" aria-label="Cerrar la guía">×</button>`}</div>
     <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(pa?"Cada caja es un curso. Mira: al tocar uno, se abre su panel.":st.d)}</p>${st.list?`<p>En tu menú (el botón con tu inicial, arriba a la derecha):</p><ul class="t-list">${st.list().map(([b,x])=>`<li><b>${esc(b)}:</b> ${esc(x)}</li>`).join("")}</ul>`:""}${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, abre el menú y toca «Guía».":"Para ver esta guía otra vez, abre el menú y toca «Guía»."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
     <div class="t-act">${TOUR.i?`<button class="btn ghost" type="button" id="t-prev">Atrás</button>`:TOUR.forced?"<span></span>":`<button class="lnk" type="button" id="t-skip2">Saltar guía</button>`}<button class="btn" type="button" id="t-next">${last?"¡Empezar!":"Siguiente"}</button></div>
-  </div>`;
+`);
   TOUR.el=el;placeTour();
-  if(pa){[150,400,700].forEach(ms=>setTimeout(()=>{if(TOUR&&TOUR.phaseA===pa)placeTour();},ms));}
-  else if(st.open){[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR&&TSTEPS[TOUR.i]===st){TOUR.el=tourTarget(st);placeTour();}},ms));}
+  if(pa){tourTrack(800);}
+  else if(st.open){{const T0=TOUR;[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR===T0&&TSTEPS[TOUR.i]===st){const n=tourTarget(st);if(n&&n!==TOUR.el){TOUR.el=n;placeTour();}}},ms));tourTrack(900);}}
   document.getElementById("t-next").focus({preventScroll:true});
 }
 /* Ubica el marco y la tarjeta. El marco nunca corta un elemento: si el destino no cabe, se resalta su primera parte completa (encabezado y primeras filas). La tarjeta nunca tapa el marco. */
@@ -2901,13 +2923,15 @@ function tourFit(el,maxB){
   return b;
 }
 function tourScroll(el){
-  if(tourFixed(el)){el.scrollIntoView({block:"nearest",behavior:"instant"});return;}
+  const sm=matchMedia("(prefers-reduced-motion:reduce)").matches?"instant":"smooth";
+  if(tourFixed(el)){el.scrollIntoView({block:"nearest",behavior:sm});return;}
   const tb=document.getElementById("tabband"),stick=(tb?tb.offsetHeight:0)+(parseFloat(getComputedStyle(document.documentElement).paddingTop)||0);
-  const r=el.getBoundingClientRect();window.scrollBy(0,r.top-(stick+T_PAD+12));
+  const r=el.getBoundingClientRect();window.scrollBy({top:r.top-(stick+T_PAD+12),behavior:sm});
 }
 function placeTour(){
   if(!TOUR)return;
   const t=document.getElementById("tour"),sp=t.querySelector(".t-spot"),card=t.querySelector(".t-card"),sh=t.querySelector(".t-shade"),el=TOUR.el;
+  if(!sp||!card)return;
   if(!el||!el.isConnected){card.style.top="";card.style.left="";delete card.dataset.dock;if(sh)sh.style.clipPath="";return;}
   const vw=innerWidth,vh=innerHeight,safeB=parseFloat(getComputedStyle(document.documentElement).paddingBottom)||0;
   const fx=tourFixed(el),panel=fx&&fx.id==="panel"?fx.getBoundingClientRect():null,inTabs=!!el.closest("#tabband");
@@ -2951,7 +2975,7 @@ document.addEventListener("keydown",e=>{
 },true);
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("button");if(!b)return;
-  if(b.id==="tour-open"){e.stopPropagation();closeMenu();if(planReady()){TSTEPS=tsteps();TOUR=null;TOUR={i:0,back:b};document.body.classList.add("touring");renderGuide();showStep();}return;}
+  if(b.id==="tour-open"){e.stopPropagation();closeMenu();if(planReady()){TSTEPS=tsteps();TOUR=null;TOUR={i:0,back:b,intro:!matchMedia("(prefers-reduced-motion:reduce)").matches};document.body.classList.add("touring");renderGuide();showStep();}return;}
   if(!TOUR)return;
   if(b.id==="t-next"&&TOUR.phaseA){e.stopPropagation();tourPhaseB();return;}
   if(b.id==="t-next"){e.stopPropagation();if(TOUR.i>=TSTEPS.length-1){endTour();goTab("malla");window.scrollTo(0,0);}else{TOUR.i++;showStep();}return;}
