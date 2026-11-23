@@ -265,7 +265,7 @@ details>summary{cursor:pointer}
 @keyframes pop{from{transform:scale(.96)}to{transform:none}}
 .legend{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px;color:var(--muted)}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px}
-.k-a{background:hsl(212 62% 33%)}.k-c{background:hsl(212 85% 94%);border:1.5px dashed hsl(212 70% 42%)}.k-o{background:hsl(212 85% 94%);border-left:4px solid hsl(212 70% 42%)}.k-l{border:1.5px dashed var(--muted)}
+.k-a{background:hsl(212 62% 33%);position:relative}.legend i.k-a::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:11px;line-height:14px;text-align:center;font-weight:800}.k-c{background:hsl(212 85% 94%);border:1.5px dashed hsl(212 70% 42%)}.k-o{background:var(--surface);border:1.5px solid hsl(212 70% 42%)}.k-l{border:1.5px dashed var(--muted)}
 .ar{--bgc:hsl(var(--h) var(--tint-s) var(--tint-l));border:1.5px solid transparent;background:var(--bgc);color:hsl(var(--h) 60% var(--tint-ink-l));padding:4px 10px;border-radius:9px;font-size:12.5px;font-weight:600;min-height:32px}
 .ar[aria-pressed="true"]{border-color:hsl(var(--h) 70% var(--stripe-l));box-shadow:0 0 0 2px hsl(var(--h) 70% var(--stripe-l))}
 .routehint{font-size:13.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
@@ -661,7 +661,7 @@ body.touring main{padding-bottom:70vh}
 .fx-e.e-open{stroke:var(--sun);stroke-width:2.6}.fx-h.e-open{fill:var(--sun)}
 .fx-e.dim{stroke:var(--fx-dim)}.fx-h.dim{fill:var(--fx-dim)}
 .fx-n{cursor:pointer;outline:none}
-.fx-n rect{fill:hsl(var(--h) var(--tint-s) var(--tint-l));stroke:hsl(var(--h) 45% 60%);stroke-width:1.4;vector-effect:non-scaling-stroke}
+.fx-n rect{fill:var(--surface);stroke:hsl(var(--h) 55% 52%);stroke-width:1.8;vector-effect:non-scaling-stroke}
 .fx-n text{fill:hsl(var(--h) 60% var(--tint-ink-l));font-weight:650;text-anchor:middle;font-family:inherit}
 .fx-n text.sub{font-weight:500;opacity:.85}
 .fx-n.s-a rect{fill:hsl(var(--h) var(--solid-s) var(--solid-l));stroke:hsl(var(--h) var(--solid-s) calc(var(--solid-l) - 12%))}
@@ -678,7 +678,9 @@ body.touring main{padding-bottom:70vh}
 .fx-n:focus-visible rect{stroke:var(--brand);stroke-width:4}
 .fx-n.s-v rect{fill:var(--surface);stroke:var(--brand);stroke-width:1.6;stroke-dasharray:6 4}
 .fx-n.s-v text{fill:var(--brand);font-weight:650}.fx-n.s-v text.sub{font-weight:700}
-.fx-n.fx-el.s-o rect{fill:hsl(var(--h) var(--tint-s) var(--tint-l));stroke:hsl(var(--h) 45% 60%)}
+.fx-n.fx-el.s-o rect{fill:var(--surface);stroke:hsl(var(--h) 55% 45%)}
+.fx-n .ck{transform:scale(var(--ck,1))}
+.fx-n.s-a .ck circle{stroke:hsl(var(--h) var(--solid-s) calc(var(--solid-l) - 12%));stroke-width:1.5}
 .fx-n.sin text.sub{font-style:italic}
 .fx-tip{position:absolute;left:0;top:0;z-index:3;max-width:min(320px,calc(100% - 12px));padding:6px 10px;border-radius:9px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;line-height:1.3;pointer-events:none;box-shadow:var(--shadow)}
 .cenm{display:block;font-weight:500}
@@ -1295,14 +1297,14 @@ function viewFlujo(){
     const sub=(ch?ch+" · ":"")+x.cr+" cr"+(rn?" · nombre nuevo":sn?" · electivo en "+renInfo().a:""),lh=fs*1.15,top=h/2-(ls.length*lh+fs*.9)/2+fs*.85;
     return `<g class="fx-n s-${st}${rn?" ren":""}${sn?" sin":""}" data-fx="${x.id}" tabindex="0" role="button" aria-label="${esc(rn?rn.n+" (antes "+x.n+")":x.n)}, ${x.cr} créditos, ${({a:"aprobado",c:"llevando",o:"disponible",l:"bloqueado"})[st]}" style="--h:${hueOf(x.area)}" transform="translate(${nx} ${ny})">
       <rect width="${w}" height="${h}" rx="9"/>${ls.map((l,i)=>`<text x="${w/2}" y="${top+i*lh}" font-size="${fs}">${esc(l)}</text>`).join("")}<text class="sub" x="${w/2}" y="${top+ls.length*lh+fs*.05}" font-size="${+Math.min(fs*.78,(w-12)/(Math.min(sub.length,34)*.54)).toFixed(1)}">${esc(sub.length>34?sub.slice(0,33)+"…":sub)}</text>
-      ${st==="a"?`<g transform="translate(${w-4} 4)"><circle r="11"/><path d="M-5 0l3.4 3.4L5-3.6"/></g>`:st==="c"?`<g class="cc" transform="translate(${w-4} 4)"><circle r="11"/><text y="4" font-size="13">…</text></g>`:""}</g>`;
+      ${st==="a"?`<g transform="translate(${w-4} 4)"><g class="ck"><circle r="11"/><path d="M-5 0l3.4 3.4L5-3.6"/></g></g>`:st==="c"?`<g class="cc" transform="translate(${w-4} 4)"><circle r="11"/><text y="4" font-size="13">…</text></g>`:""}</g>`;
   }).join("")+fxElecs().map(({b,i,e,extra})=>{
     const [nx,ny,w,h]=b,st=e?(e.st==="a"?"a":e.st==="c"?"c":"o"):"v",fs=Math.min(fxFs(h),15);
     let ls=e?fxLines(e.name,w,fs):["Electivo"];while(ls.length>1&&ls.length*fs*1.15+fs*.95+6>h){ls.length--;ls[ls.length-1]=ls[ls.length-1].replace(/.{0,2}$/,"…");}
     const sub=e?`${+e.cr} cr${extra?` · +${extra} más`:""}`:"+ Elegir",lh=fs*1.15,top=h/2-(ls.length*lh+fs*.9)/2+fs*.85;
     return `<g class="fx-n fx-el s-${st}" data-fxe="${i}" tabindex="0" role="button" aria-label="${e?`Electivo: ${esc(e.name)}, ${+e.cr} créditos, ${({a:"aprobado",c:"llevando",o:"pendiente"})[st]}`:"Electivo sin elegir: toca para elegirlo"}" style="--h:60" transform="translate(${nx} ${ny})">
       <rect width="${w}" height="${h}" rx="9"/>${ls.map((l,k)=>`<text x="${w/2}" y="${top+k*lh}" font-size="${fs}">${esc(l)}</text>`).join("")}<text class="sub" x="${w/2}" y="${top+ls.length*lh+fs*.05}" font-size="${fs*.8}">${esc(sub)}</text>
-      ${st==="a"?`<g transform="translate(${w-4} 4)"><circle r="11"/><path d="M-5 0l3.4 3.4L5-3.6"/></g>`:""}</g>`;
+      ${st==="a"?`<g transform="translate(${w-4} 4)"><g class="ck"><circle r="11"/><path d="M-5 0l3.4 3.4L5-3.6"/></g></g>`:""}</g>`;
   }).join("");
   /* encabezado de ciclos: centro de las cajas de cada ciclo */
   const cyc={};COURSES.forEach(x=>{const n=FX.n[x.id];if(n&&(!n[4]||FX.layout==="auto"))(cyc[x.ci]=cyc[x.ci]||[]).push(n[0]+n[2]/2);});
@@ -1321,6 +1323,8 @@ function viewFlujo(){
 function fxApply(){
   const g=document.getElementById("fx-g"),wrap=document.getElementById("fx");if(!g||!wrap||!FX)return;
   const T=fxT[PLAN.id];fxClamp(T,wrap);g.setAttribute("transform",`translate(${T.x} ${T.y}) scale(${T.s})`);fxTipPos();
+  /* El ✓ de los aprobados mantiene un tamaño visible aunque el flujograma esté alejado. */
+  const ck=Math.min(2.4,Math.max(1,.75/T.s)).toFixed(1);if(wrap.dataset.ck!==ck){wrap.dataset.ck=ck;wrap.style.setProperty("--ck",ck);}
   document.querySelectorAll("#fx-cyc span").forEach(s=>{const x=+s.dataset.cx*T.s+T.x;s.style.transform=`translateX(${x}px) translateX(-50%)`;s.hidden=x<-60||x>wrap.clientWidth+60;});
 }
 function fxFit(todo){
@@ -2831,6 +2835,8 @@ function endTour(){
   const gd=document.getElementById("guide");if(gd&&!gd.hidden){gd.classList.remove("hello");void gd.offsetWidth;gd.classList.add("hello");setTimeout(()=>gd.classList.remove("hello"),2600);}
   const g=document.getElementById("tour-open"),f=g&&!g.hidden?g:b;if(f&&f.focus)f.focus({preventScroll:true});
 }
+function tourPhaseB(){if(!TOUR||!TOUR.phaseA)return;const id=TOUR.phaseA;TOUR.phaseA=null;openCourse(id);TOUR.opened=true;showStep();}
+function fxZoomTo(id){const wrap=document.getElementById("fx"),n=FX&&FX.n[id],T=FX&&fxT[PLAN.id];if(!wrap||!n||!T)return;const v=fxVisible(),s=Math.max(T.s,.9),cx=(v.left+v.right)/2-v.r.left,cy=(v.top+v.bot)/2-v.r.top;fxGo({s,x:cx-(n[0]+n[2]/2)*s,y:cy-(n[1]+n[3]/2)*s},300);}
 function tourTarget(st){if(!st.sel)return null;const all=[...document.querySelectorAll(st.sel)].filter(e=>e.offsetParent);return all[0]||(st.alt&&document.querySelector(st.alt))||null;}
 function tourMove(st,seq){
   const b=document.querySelector(`#tabs [data-tab="${st.tab}"]`),T=TABS.find(x=>x[0]===st.tab),n=TSTEPS.length,t=document.getElementById("tour");
@@ -2852,20 +2858,31 @@ function showStep(){
   if(TOUR.opened&&!st.open){TOUR.opened=false;focusId=null;renderPanel();applyFocus();}
   if(tab!==st.tab&&TOUR.i>0){tourMove(st,seq);return;}
   if(tab!==st.tab){go(st.tab);}
-  if(st.open&&!focusId){const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]);if(c||f){openCourse(c?c.dataset.card:f.id);TOUR.opened=true;}}
-  if(st.menu&&tab===st.tab){openMenu(true);TOUR.menu=true;}
-  const el=tourTarget(st);
-  if(el)tourScroll(el);else window.scrollTo(0,0);
+  let el=null,pa=null;
+  if(st.first&&!TOUR.opened){
+    /* Fase A: se resalta un curso del primer ciclo; tras un momento se abre su panel solo (fase B). */
+    const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]),id=c?c.dataset.card:f&&f.id;
+    if(id){pa=id;TOUR.phaseA=id;
+      if(f){const wp=document.querySelector(".fx-wrap");if(wp)tourScroll(wp);fxZoomTo(id);el=document.querySelector(`.fx-n[data-fx="${id}"]`);}
+      else{el=c;tourScroll(el);}
+      setTimeout(()=>{if(TOUR&&TOUR.seq===seq&&TOUR.phaseA===id)tourPhaseB();},2200);}
+  }
+  if(!pa){TOUR.phaseA=null;
+    if(st.open&&!focusId){const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]);if(c||f){openCourse(c?c.dataset.card:f.id);TOUR.opened=true;}}
+    if(st.menu&&tab===st.tab){openMenu(true);TOUR.menu=true;}
+    el=tourTarget(st);
+    if(el)tourScroll(el);else window.scrollTo(0,0);}
   const t=document.getElementById("tour"),n=TSTEPS.length,last=TOUR.i===n-1;
   t.hidden=false;
   t.innerHTML=`<div class="t-shade${el?"":" full"}"></div><div class="t-spot" ${el?"":"hidden"}></div>
   <div class="t-card" role="dialog" aria-modal="true" aria-labelledby="t-tt" aria-describedby="t-dd"${el?"":' data-center=""'}>
     <div class="t-top"><span class="t-n small">Paso ${TOUR.i+1} de ${n}</span>${TOUR.forced?"":`<button class="t-x" type="button" id="t-skip" aria-label="Cerrar la guía">×</button>`}</div>
-    <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(st.d)}</p>${st.list?`<p>En tu menú (el botón con tu inicial, arriba a la derecha):</p><ul class="t-list">${st.list().map(([b,x])=>`<li><b>${esc(b)}:</b> ${esc(x)}</li>`).join("")}</ul>`:""}${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, abre el menú y toca «Guía».":"Para ver esta guía otra vez, abre el menú y toca «Guía»."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
+    <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(pa?"Cada caja es un curso. Mira: al tocar uno, se abre su panel.":st.d)}</p>${st.list?`<p>En tu menú (el botón con tu inicial, arriba a la derecha):</p><ul class="t-list">${st.list().map(([b,x])=>`<li><b>${esc(b)}:</b> ${esc(x)}</li>`).join("")}</ul>`:""}${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, abre el menú y toca «Guía».":"Para ver esta guía otra vez, abre el menú y toca «Guía»."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
     <div class="t-act">${TOUR.i?`<button class="btn ghost" type="button" id="t-prev">Atrás</button>`:TOUR.forced?"<span></span>":`<button class="lnk" type="button" id="t-skip2">Saltar guía</button>`}<button class="btn" type="button" id="t-next">${last?"¡Empezar!":"Siguiente"}</button></div>
   </div>`;
   TOUR.el=el;placeTour();
-  if(st.open){[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR&&TSTEPS[TOUR.i]===st){TOUR.el=tourTarget(st);placeTour();}},ms));}
+  if(pa){[150,400,700].forEach(ms=>setTimeout(()=>{if(TOUR&&TOUR.phaseA===pa)placeTour();},ms));}
+  else if(st.open){[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR&&TSTEPS[TOUR.i]===st){TOUR.el=tourTarget(st);placeTour();}},ms));}
   document.getElementById("t-next").focus({preventScroll:true});
 }
 /* Ubica el marco y la tarjeta. El marco nunca corta un elemento: si el destino no cabe, se resalta su primera parte completa (encabezado y primeras filas). La tarjeta nunca tapa el marco. */
@@ -2936,6 +2953,7 @@ document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("button");if(!b)return;
   if(b.id==="tour-open"){e.stopPropagation();closeMenu();if(planReady()){TSTEPS=tsteps();TOUR=null;TOUR={i:0,back:b};document.body.classList.add("touring");renderGuide();showStep();}return;}
   if(!TOUR)return;
+  if(b.id==="t-next"&&TOUR.phaseA){e.stopPropagation();tourPhaseB();return;}
   if(b.id==="t-next"){e.stopPropagation();if(TOUR.i>=TSTEPS.length-1){endTour();goTab("malla");window.scrollTo(0,0);}else{TOUR.i++;showStep();}return;}
   if(b.id==="t-prev"){e.stopPropagation();TOUR.i--;showStep();return;}
   if((b.id==="t-skip"||b.id==="t-skip2")&&!TOUR.forced){e.stopPropagation();endTour();return;}
