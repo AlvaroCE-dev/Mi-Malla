@@ -2102,7 +2102,8 @@ function guideTasks(){
 }
 function renderGuide(){
   const g=document.getElementById("guide");
-  if(guideOff||!planReady()||TOUR){g.hidden=true;return;}
+  /* Quitado a pedido de Alvaro (2026-11-23): el recuadro «Sigamos» ya no se muestra. */
+  g.hidden=true;return;
   const ts=guideTasks(),i=ts.findIndex(t=>!t.done);
   if(i<0){g.hidden=true;return;}
   const t=ts[i],done=ts.filter(q=>q.done).length;
