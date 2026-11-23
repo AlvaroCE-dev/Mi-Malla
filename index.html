@@ -2718,7 +2718,7 @@ function tsteps(){const fx=vistaFlujo()&&FX&&FXplan===PLAN.id;const l=TSTEPS_ALL
 let TOUR=null,tourPending=false;
 addEventListener("pointerdown",()=>{document.documentElement.dataset.im="p";},true);
 addEventListener("keydown",e=>{if(!e.metaKey&&!e.ctrlKey&&!e.altKey)document.documentElement.dataset.im="k";},true);
-function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)){tourPending=false;startTour();}}
+function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)&&!(tab==="malla"&&vistaFlujo()&&FXplan!==PLAN.id)){tourPending=false;startTour();}}
 function startTour(){TSTEPS=tsteps();TOUR={i:0,back:document.activeElement,forced:true};S.guia.tour=true;persist();document.body.classList.add("touring");showStep();}
 function endTour(){
   if(TOUR&&TOUR.opened){focusId=null;renderPanel();applyFocus();}
@@ -2742,6 +2742,7 @@ function tourMove(st,seq){
   setTimeout(()=>{if(!TOUR||TOUR.seq!==seq)return;const dir=tabIdx(st.tab)>=tabIdx(tab)?1:-1;tabVT(()=>{go(st.tab);showTabBtn(document.querySelector('#tabs [aria-current="page"]'));showStep();},dir);},2500);
 }
 function showStep(){
+  if(TSTEPS[TOUR.i].sel==="#cy-1"&&vistaFlujo()&&FX&&FXplan===PLAN.id){const k=TOUR.i;TSTEPS=tsteps();TOUR.i=Math.min(k,TSTEPS.length-1);}
   const st=TSTEPS[TOUR.i],seq=TOUR.seq=(TOUR.seq||0)+1;
   if(TOUR.opened&&!st.open){TOUR.opened=false;focusId=null;renderPanel();applyFocus();}
   if(tab!==st.tab&&TOUR.i>0){tourMove(st,seq);return;}
