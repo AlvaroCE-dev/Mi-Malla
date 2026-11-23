@@ -2824,8 +2824,11 @@ const T1T="Toca un curso y márcalo «Aprobado» o «Llevando»; sus requisitos 
 function swYears(){const car=(S&&S.carrera)||(PLAN&&PLAN.carrera);return ((INDEX&&INDEX.planes)||[]).filter(x=>x.carrera===car).map(x=>String(x.anio)).sort().join(" | ");}
 const TSTEPS_ALL=[
  {tab:"malla",open:true,first:true,sel:"#panel .seg:has(#set-c)",alt:"#panel",t:"¡Hola! Esta es tu malla",d:T1T},
- {tab:"malla",sel:"#top",menu:true,t:"Tu cabecera y tu menú",d:"Arriba ves tus créditos y cuándo egresas.",list:()=>[hasPair()&&[swYears(),"cambia de malla; en «Comparar mallas» ves cuál te conviene."],["Mi avance",TRAS()?"carga tu historial en PDF o pasa tu avance a otro dispositivo con un código.":"carga tu historial en PDF."],["Usuarios","cambia de usuario o crea uno nuevo."],["Guía","vuelve a ver estos pasos."]].filter(Boolean)},
- {tab:"inicio",sel:".cards-cart .c:has(.cart-b)",alt:"#cart",t:"Planifica tu próximo ciclo",d:"Toca + en los cursos que llevarás el próximo ciclo y mira cómo cambia tu fecha de egreso. En «Proyección» ves cada semestre y mueves cursos arrastrándolos."},
+ {tab:"malla",sel:"#top",menu:true,t:"Tu cabecera y tu menú",d:"Arriba ves tus créditos y cuándo egresas.",lh:"En tu menú (el botón con tu inicial, arriba a la derecha):",list:()=>[hasPair()&&[swYears(),"cambia de malla; en «Comparar mallas» ves cuál te conviene."],["Mi avance",TRAS()?"carga tu historial en PDF o pasa tu avance a otro dispositivo con un código.":"carga tu historial en PDF."],["Usuarios","cambia de usuario o crea uno nuevo."],["Guía","vuelve a ver estos pasos."]].filter(Boolean)},
+ {tab:"proyeccion",t:"¿Cuándo terminas?",parts:[
+   {sel:"#view .headline",d:"Aquí ves cuándo terminarías la carrera si sigues este ritmo.",auto:2000},
+   {sel:".board .sem:not(.now)",alt:".board",d:"Cada columna es un semestre con sus cursos. Para mover uno, arrástralo por sus puntos (⋮⋮) o elige otro semestre en su selector; tu fecha de egreso se actualiza al instante."},
+   {sel:'details[data-keep="ajustes"]',union:'details[data-keep="ajustes"],details[data-keep="verano"]>summary',det:["ajustes"],d:"",list:()=>[["Ajustar créditos y semestres",`elige cuántos créditos llevas por ciclo (normalmente ${LIM.creditosPorDefecto}) y desde qué periodo proyectar.`],["Ciclos de verano",`ábrelo para activar los veranos que llevarías. En cada verano puedes llevar hasta ${VERMAX()} cursos académicos y ${VEREFE()} experiencias formativas.`]],tip:"Para elegir los cursos de tu próximo ciclo, toca + en Resumen."}]},
  {tab:"egreso",sel:".egl",t:"Lo que te falta",d:"Aquí ves qué te falta para egresar: créditos, electivos, inglés y prácticas. En «Concentraciones» eliges hasta 2; para inscribirte piden 110 créditos.",last:true},
 ];
 let TSTEPS=TSTEPS_ALL;
@@ -2836,6 +2839,7 @@ addEventListener("keydown",e=>{if(!e.metaKey&&!e.ctrlKey&&!e.altKey)document.doc
 function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)&&!(tab==="malla"&&vistaFlujo()&&FXplan!==PLAN.id)){tourPending=false;startTour();}}
 function startTour(){TSTEPS=tsteps();const rm=matchMedia("(prefers-reduced-motion:reduce)").matches;TOUR={i:0,back:document.activeElement,forced:true,intro:!rm};S.guia.tour=true;persist();document.body.classList.add("touring");if(rm)showStep();else{const T0=TOUR;setTimeout(()=>{if(TOUR===T0)showStep();},600);}}
 function endTour(){
+  if(TOUR&&TOUR.det)tourDet(null);
   if(TOUR&&TOUR.menu){TOUR.menu=false;closeMenu();}
   if(TOUR&&TOUR.opened){focusId=null;renderPanel();applyFocus();}
   const t=document.getElementById("tour");t.hidden=true;t.innerHTML="";document.body.classList.remove("touring");
@@ -2856,6 +2860,12 @@ function tourFrame(noSpot,o,html){
   cd.innerHTML=html;
   if(had){cd.classList.remove("swap");void cd.offsetWidth;cd.classList.add("swap");}
 }
+/* Abre los paneles plegados que muestra un momento de la guía y, al salir, los deja como estaban. */
+function tourDet(keys){
+  if(TOUR&&TOUR.det){TOUR.det.forEach(([k,o])=>{const d=document.querySelector(`details[data-keep="${k}"]`);if(d&&d.open!==o)d.open=o;});TOUR.det=null;}
+  if(keys&&TOUR){TOUR.det=keys.map(k=>{const d=document.querySelector(`details[data-keep="${k}"]`);const o=!!(d&&d.open);if(d)d.open=true;return [k,o];});}
+}
+function tourPrev(){if(TOUR.part){TOUR.part--;showStep();return;}if(!TOUR.i)return;TOUR.i--;const p=TSTEPS[TOUR.i].parts;TOUR.part=p?p.length-1:0;showStep();}
 function tourTrack(ms){if(!TOUR)return;const end=performance.now()+ms,T0=TOUR;const f=()=>{if(TOUR!==T0)return;placeTour();if(performance.now()<end)requestAnimationFrame(f);};requestAnimationFrame(f);}
 function tourPhaseB(){if(!TOUR||!TOUR.phaseA)return;const id=TOUR.phaseA;TOUR.phaseA=null;openCourse(id);TOUR.opened=true;showStep();}
 function fxZoomTo(id,ms){const wrap=document.getElementById("fx"),n=FX&&FX.n[id],T=FX&&fxT[PLAN.id];if(!wrap||!n||!T)return;const v=fxVisible(),s=Math.min(Math.max(T.s,.9),1.3),cx=(v.left+v.right)/2-v.r.left,cy=(v.top+v.bot)/2-v.r.top;fxGo({s,x:cx-(n[0]+n[2]/2)*s,y:cy-(n[1]+n[3]/2)*s},ms||300);}
@@ -2875,7 +2885,9 @@ function tourMove(st,seq){
 }
 function showStep(){
   if(TOUR.i===0)TSTEPS=tsteps();
-  const st=TSTEPS[TOUR.i],seq=TOUR.seq=(TOUR.seq||0)+1,T0=TOUR;
+  let st=TSTEPS[TOUR.i];const seq=TOUR.seq=(TOUR.seq||0)+1,T0=TOUR;
+  if(st.parts){const k=Math.min(TOUR.part||0,st.parts.length-1);st={...st,...st.parts[k],pk:k};}
+  if(TOUR.det&&!st.det)tourDet(null);
   if(TOUR.menu&&!st.menu){TOUR.menu=false;closeMenu();}
   if(TOUR.opened&&!st.open){TOUR.opened=false;focusId=null;renderPanel();applyFocus();}
   if(tab!==st.tab&&TOUR.i>0){tourMove(st,seq);return;}
@@ -2897,16 +2909,20 @@ function showStep(){
   if(!pa){TOUR.phaseA=null;
     if(st.open&&!focusId){const c=document.querySelector('#cy-1 .c[data-card]')||document.querySelector('.cycle .c[data-card]'),f=!c&&COURSES.find(x=>x.ci===1&&FX&&FX.n[x.id]);if(c||f){openCourse(c?c.dataset.card:f.id);TOUR.opened=true;}}
     if(st.menu&&tab===st.tab){openMenu(true);TOUR.menu=true;}
+    if(st.det&&tab===st.tab)tourDet(st.det);
+    TOUR.uni=st.union&&tab===st.tab?st.union:null;
     el=tourTarget(st);
     if(el)tourScroll(el);else window.scrollTo(0,0);}
   const t=document.getElementById("tour"),n=TSTEPS.length,last=TOUR.i===n-1;
   t.hidden=false;
   tourFrame(!el,{center:!el},`
     <div class="t-top"><span class="t-n small">Paso ${TOUR.i+1} de ${n}</span>${TOUR.forced?"":`<button class="t-x" type="button" id="t-skip" aria-label="Cerrar la guía">×</button>`}</div>
-    <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(pa?"Cada caja es un curso. Mira: al tocar uno, se abre su panel.":st.d)}</p>${st.list?`<p>En tu menú (el botón con tu inicial, arriba a la derecha):</p><ul class="t-list">${st.list().map(([b,x])=>`<li><b>${esc(b)}:</b> ${esc(x)}</li>`).join("")}</ul>`:""}${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, abre el menú y toca «Guía».":"Para ver esta guía otra vez, abre el menú y toca «Guía»."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
+    <h2 id="t-tt">${esc(st.t)}</h2>${(pa||st.d)?`<p id="t-dd">${esc(pa?"Cada caja es un curso. Mira: al tocar uno, se abre su panel.":st.d)}</p>`:""}${st.list?`${st.lh?`<p>${esc(st.lh)}</p>`:""}<ul class="t-list">${st.list().map(([b,x])=>`<li><b>${esc(b)}:</b> ${esc(x)}</li>`).join("")}</ul>`:""}${st.tip?`<p class="t-tip">${esc(st.tip)}</p>`:""}${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, abre el menú y toca «Guía».":"Para ver esta guía otra vez, abre el menú y toca «Guía»."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
     <div class="t-act">${TOUR.i?`<button class="btn ghost" type="button" id="t-prev">Atrás</button>`:TOUR.forced?"<span></span>":`<button class="lnk" type="button" id="t-skip2">Saltar guía</button>`}<button class="btn" type="button" id="t-next">${last?"¡Empezar!":"Siguiente"}</button></div>
 `);
   TOUR.el=el;placeTour();
+  if(st.parts)tourTrack(600);
+  if(st.parts&&st.pk===0&&st.auto){setTimeout(()=>{if(TOUR===T0&&TOUR.seq===seq&&(TOUR.part||0)===0){TOUR.part=1;showStep();}},st.auto);}
   if(pa){tourTrack(800);}
   else if(st.open){{const T0=TOUR;[250,500,800].forEach(ms=>setTimeout(()=>{if(TOUR===T0&&TSTEPS[TOUR.i]===st){const n=tourTarget(st);if(n&&n!==TOUR.el){TOUR.el=n;placeTour();}}},ms));tourTrack(900);}}
   document.getElementById("t-next").focus({preventScroll:true});
@@ -2941,8 +2957,10 @@ function placeTour(){
   const vw=innerWidth,vh=innerHeight,safeB=parseFloat(getComputedStyle(document.documentElement).paddingBottom)||0;
   const fx=tourFixed(el),panel=fx&&fx.id==="panel"?fx.getBoundingClientRect():null,inTabs=!!el.closest("#tabband");
   const minTop=inTabs?12:tourHead()+8;let r=el.getBoundingClientRect();
-  const uni=TOUR.menu&&el.id==="top";
-  if(uni){const m=document.getElementById("mnu").getBoundingClientRect();if(m.height&&m.bottom>r.bottom)r={left:Math.min(r.left,m.left),right:Math.max(r.right,m.right),top:r.top,bottom:m.bottom,width:Math.max(r.right,m.right)-Math.min(r.left,m.left),height:m.bottom-r.top};}
+  const uni=(TOUR.menu&&el.id==="top")||!!TOUR.uni;
+  const join=m=>{if(!m.height)return;const L=Math.min(r.left,m.left),R=Math.max(r.right,m.right),T=Math.min(r.top,m.top),B=Math.max(r.bottom,m.bottom);r={left:L,right:R,top:T,bottom:B,width:R-L,height:B-T};};
+  if(TOUR.menu&&el.id==="top")join(document.getElementById("mnu").getBoundingClientRect());
+  if(TOUR.uni)document.querySelectorAll(TOUR.uni).forEach(n=>join(n.getBoundingClientRect()));
   const mob=tourMob();
   if(mob){card.style.left="";card.style.top="";}else delete card.dataset.dock;
   const cw=card.offsetWidth,ch=card.offsetHeight;
@@ -2975,7 +2993,7 @@ document.addEventListener("keydown",e=>{
   if(!TOUR)return;
   if(e.key==="Escape"){e.preventDefault();e.stopPropagation();if(!TOUR.forced)endTour();return;}
   if(e.key==="ArrowRight"&&!/INPUT|SELECT|TEXTAREA/.test((e.target.tagName||""))){e.preventDefault();const nx=document.getElementById("t-next");if(nx)nx.click();}
-  if(e.key==="ArrowLeft"&&TOUR.i>0){e.preventDefault();TOUR.i--;showStep();}
+  if(e.key==="ArrowLeft"&&(TOUR.i>0||TOUR.part)){e.preventDefault();tourPrev();}
   if(e.key==="Tab"){const f=[...document.querySelectorAll("#tour button")];const a=f.indexOf(document.activeElement);if(e.shiftKey&&a<=0){e.preventDefault();f[f.length-1].focus();}else if(!e.shiftKey&&a===f.length-1){e.preventDefault();f[0].focus();}}
 },true);
 document.addEventListener("click",e=>{
@@ -2983,8 +3001,9 @@ document.addEventListener("click",e=>{
   if(b.id==="tour-open"){e.stopPropagation();closeMenu();if(planReady()){TSTEPS=tsteps();TOUR=null;TOUR={i:0,back:b,intro:!matchMedia("(prefers-reduced-motion:reduce)").matches};document.body.classList.add("touring");renderGuide();showStep();}return;}
   if(!TOUR)return;
   if(b.id==="t-next"&&TOUR.phaseA){e.stopPropagation();tourPhaseB();return;}
-  if(b.id==="t-next"){e.stopPropagation();if(TOUR.i>=TSTEPS.length-1){endTour();goTab("malla");window.scrollTo(0,0);}else{TOUR.i++;showStep();}return;}
-  if(b.id==="t-prev"){e.stopPropagation();TOUR.i--;showStep();return;}
+  if(b.id==="t-next"&&TSTEPS[TOUR.i].parts&&(TOUR.part||0)<TSTEPS[TOUR.i].parts.length-1){e.stopPropagation();TOUR.part=(TOUR.part||0)+1;showStep();return;}
+  if(b.id==="t-next"){e.stopPropagation();TOUR.part=0;if(TOUR.i>=TSTEPS.length-1){endTour();goTab("malla");window.scrollTo(0,0);}else{TOUR.i++;showStep();}return;}
+  if(b.id==="t-prev"){e.stopPropagation();tourPrev();return;}
   if((b.id==="t-skip"||b.id==="t-skip2")&&!TOUR.forced){e.stopPropagation();endTour();return;}
 },true);
 /* ---------- Menú de la cabecera ---------- */
