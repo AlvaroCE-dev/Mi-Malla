@@ -2699,7 +2699,7 @@ document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest
 /* Deslizar el dedo de lado sobre el contenido cambia de pestaña (solo pantallas táctiles). */
 (()=>{let sx=0,sy=0,st=0,ok=false;
   const scrollsX=el=>{for(let n=el;n&&n!==document.body;n=n.parentElement){if(n.scrollWidth>n.clientWidth+2){const o=getComputedStyle(n).overflowX;if(o==="auto"||o==="scroll")return true;}}return false;};
-  document.addEventListener("touchstart",e=>{const t=e.touches[0];ok=e.touches.length===1&&!TOUR&&!focusId&&!document.querySelector("dialog[open]")&&!!e.target.closest("#view")&&!e.target.closest("input,select,textarea,.grip,[data-drag]")&&!scrollsX(e.target)&&t.clientX>24&&t.clientX<innerWidth-24;sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});
+  document.addEventListener("touchstart",e=>{const t=e.touches[0];ok=e.touches.length===1&&!TOUR&&!focusId&&!document.querySelector("dialog[open]")&&!!e.target.closest("#view")&&!e.target.closest("input,select,textarea,.grip,[data-drag],.fx-wrap")&&!scrollsX(e.target)&&t.clientX>24&&t.clientX<innerWidth-24;sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});
   document.addEventListener("touchend",e=>{if(!ok||(typeof drag!=="undefined"&&drag))return;ok=false;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;if(Date.now()-st>600||Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*2)return;const i=tabIdx(tab)+(dx<0?1:-1);if(i>=0&&i<TABS.length)goTab(TABS[i][0]);},{passive:true});
 })();
 /* ---------- Guía de bienvenida ---------- */
