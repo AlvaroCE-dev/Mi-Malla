@@ -1436,7 +1436,7 @@ function viewComparar(){
   const groups=CMP_ORDER.map(k=>[k,vis.filter(r=>r.main===k).sort((x,y)=>x.key-y.key)]).filter(g=>g[1].length);
   const chip=(k,t,n)=>`<button type="button" class="cm-f${k!=="todo"?" t-"+k:""}" data-cmpf="${k}" aria-pressed="${cmpF===k}">${t}<span class="num">${n}</span></button>`;
   const inc=np.equivalenciasIncompletas?`<p class="pbanner small">La tabla oficial de equivalencias de ${esc(PLAN.carrera)} aún no está cargada. Comparo por código y nombre: confírmalo con la DAAR.</p>`:"";
-  const tot=(p)=>`${p.creditos.total} créditos · ${p.creditos.electivos||0} electivos · ${p.ciclos.length-1} ciclos`;
+  const tot=(p)=>`${p.creditos.total} créditos en total · ${p.creditos.electivos||0} créditos de electivos · ${p.ciclos.length-1} ciclos`;
   const tp=traerPendiente(),traer=tp&&tp.n?`<button class="btn ghost cm-traer" type="button" id="traer">Traer mi avance de la Malla ${a}</button>`:"";
   return `<section class="cmp-head"><div><h2>Comparar mallas</h2><p class="muted">Cada curso de tu Malla ${a} y qué pasa con él en la Malla ${b} de ${esc(PLAN.carrera)}. Tus dos mallas guardan su propio avance.</p></div>
     <div class="cm-sum"><div><span class="cm-y">Malla ${a}</span><b>${tot(op)}</b></div><span aria-hidden="true">→</span><div><span class="cm-y">Malla ${b}</span><b>${tot(np)}</b></div></div>${traer}</section>${inc}
@@ -2707,6 +2707,7 @@ const TSTEPS_ALL=[
  {tab:"malla",t:"Hola, así funciona Mi Malla UP",d:"Marca tus cursos, arma tu próximo ciclo y mira cuándo egresas. Son {n} pasos cortos."},
  {tab:"malla",sel:"#cy-1",alt:".cycle",t:"Marca lo que aprobaste",d:"Toca el círculo de un curso aprobado. Sus requisitos se marcan solos."},
  {tab:"malla",open:true,sel:"#set-c",t:"¿Aún lo estás llevando?",d:"Elige «Llevando». El curso cuenta en tu proyección sin darlo por aprobado."},
+ {tab:"malla",sel:"#av-open",avance:true,t:"¿Ya avanzaste antes? Usa «Mi avance»",d:"Sube tu «Historial académico no oficial» en PDF y marcamos tus cursos solos. Aquí también pasas tu avance a otro celular o computadora con un código, o lo traes de otro."},
  {tab:"inicio",sel:".cards-cart .c:has(.cart-b)",alt:"#cart",t:"Elige tu próximo ciclo",d:"Toca + en los cursos que quieres llevar. Verás tus créditos y tu fecha de egreso."},
  {tab:"comparar",sel:".cmp-head",when:()=>hasPair(),t:"Tu malla 2022 y tu malla 2027",d:"Tu carrera tiene dos mallas y cada una guarda su propio avance; cambias entre ellas arriba, junto al nombre. Aquí ves qué cursos equivalen, cuáles cambiaron y cuáles son nuevos."},
  {tab:"proyeccion",sel:".board .sem:not(.now)",alt:".board",t:"Mira cuándo egresas",d:"Tus cursos ya están repartidos por semestre. Para mover uno, arrástralo por sus puntos."},
@@ -2714,7 +2715,7 @@ const TSTEPS_ALL=[
  {tab:"concentraciones",sel:".cfor-s",alt:".ctema",t:"Explora las concentraciones",d:"Son grupos de cursos de una especialidad. Elige hasta 2 y mira cuánto te falta; para inscribirte oficialmente piden 110 créditos.",last:true},
 ];
 let TSTEPS=TSTEPS_ALL;
-function tsteps(){const fx=vistaFlujo()&&FX&&FXplan===PLAN.id;const l=TSTEPS_ALL.filter(x=>!x.when||x.when()).map(x=>fx&&x.sel==="#cy-1"?{...x,sel:".fx-wrap",alt:null,t:"Tu malla es un flujograma",d:"Toca un curso para ver qué necesita (azul) y qué abre (amarillo), y márcalo como aprobado. Las cajas «Electivo» se tocan para elegir tus electivos. Pellizca o usa + y − para acercar; arriba puedes cambiar a Tarjetas."}:x);return l.map((x,i)=>i?x:{...x,d:x.d.replace("{n}",l.length)});}
+function tsteps(){const fx=vistaFlujo()&&FX&&FXplan===PLAN.id;const l=TSTEPS_ALL.filter(x=>!x.when||x.when()).map(x=>x.avance&&!TRAS()?{...x,d:"Sube tu «Historial académico no oficial» en PDF y marcamos tus cursos solos."}:x).map(x=>fx&&x.sel==="#cy-1"?{...x,sel:".fx-wrap",alt:null,t:"Tu malla es un flujograma",d:"Toca un curso para ver qué necesita (azul) y qué abre (amarillo), y márcalo como aprobado. Las cajas «Electivo» se tocan para elegir tus electivos. Pellizca o usa + y − para acercar; arriba puedes cambiar a Tarjetas."}:x);return l.map((x,i)=>i?x:{...x,d:x.d.replace("{n}",l.length)});}
 let TOUR=null,tourPending=false;
 addEventListener("pointerdown",()=>{document.documentElement.dataset.im="p";},true);
 addEventListener("keydown",e=>{if(!e.metaKey&&!e.ctrlKey&&!e.altKey)document.documentElement.dataset.im="k";},true);
@@ -2755,7 +2756,7 @@ function showStep(){
   t.innerHTML=`<div class="t-shade${el?"":" full"}"></div><div class="t-spot" ${el?"":"hidden"}></div>
   <div class="t-card" role="dialog" aria-modal="true" aria-labelledby="t-tt" aria-describedby="t-dd"${el?"":' data-center=""'}>
     <div class="t-top"><span class="t-n small">Paso ${TOUR.i+1} de ${n}</span>${TOUR.forced?"":`<button class="t-x" type="button" id="t-skip" aria-label="Cerrar la guía">×</button>`}</div>
-    <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(st.d)}</p>${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para abrirlo en otro celular o computadora, toca «Mi avance» arriba. Para ver esta guía otra vez, toca «Guía».":"Para ver esta guía otra vez, toca «Guía» arriba."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
+    <h2 id="t-tt">${esc(st.t)}</h2><p id="t-dd">${esc(st.d)}</p>${(()=>{const nt=st.last?(window.__local?"Tu avance se guarda en este dispositivo. Para ver esta guía otra vez, toca «Guía» arriba.":"Para ver esta guía otra vez, toca «Guía» arriba."):"";return nt?`<p class="t-tip">${esc(nt)}</p>`:"";})()}
     <div class="t-act">${TOUR.i?`<button class="btn ghost" type="button" id="t-prev">Atrás</button>`:TOUR.forced?"<span></span>":`<button class="lnk" type="button" id="t-skip2">Saltar guía</button>`}<button class="btn" type="button" id="t-next">${last?"¡Empezar!":TOUR.i?"Siguiente":"Ver cómo"}</button></div>
   </div>`;
   TOUR.el=el;placeTour();
