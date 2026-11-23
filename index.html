@@ -2888,6 +2888,7 @@ function showStep(){
   let st=TSTEPS[TOUR.i];const seq=TOUR.seq=(TOUR.seq||0)+1,T0=TOUR;
   if(st.parts){const k=Math.min(TOUR.part||0,st.parts.length-1);st={...st,...st.parts[k],pk:k};}
   if(TOUR.det&&!st.det)tourDet(null);
+  TOUR.uni=null;
   if(TOUR.menu&&!st.menu){TOUR.menu=false;closeMenu();}
   if(TOUR.opened&&!st.open){TOUR.opened=false;focusId=null;renderPanel();applyFocus();}
   if(tab!==st.tab&&TOUR.i>0){tourMove(st,seq);return;}
