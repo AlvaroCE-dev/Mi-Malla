@@ -156,6 +156,7 @@ details>summary{cursor:pointer}
 .fl-hint{flex-basis:100%;margin:2px 0 0;color:var(--muted)}
 .toast-b{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 .erow .dupn{display:block;color:var(--now);margin-top:2px}
+.xtag{display:inline-block;padding:1px 8px;border-radius:9px;background:var(--plan-soft);color:var(--ink);font-weight:600;vertical-align:1px}
 .erow.dup .en{opacity:.9}
 .meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 7px;font-size:12.5px;line-height:1.25}
 .badge{padding:1px 7px;border-radius:7px;font-size:11.5px;font-weight:700;background:var(--surface);color:hsl(var(--h) 65% var(--tint-ink-l))}
@@ -710,7 +711,8 @@ body.touring main{padding-bottom:70vh}
 @media (hover:hover) and (pointer:fine){.fx-n:hover rect{stroke-width:2.6}}
 
 /* v56 · cabecera compacta y menú */
-.top{position:relative;z-index:8}
+.top{position:relative}
+.top.mopen{z-index:9}
 .bt{min-width:0}
 .who{position:relative;display:flex;align-items:center;margin-left:auto;width:auto;flex:none}
 .mnu-b{width:44px;height:44px;border-radius:50%;border:0;background:var(--brand);color:var(--brand-ink);font:700 17px var(--display,inherit);display:grid;place-items:center;padding:0;flex:none;transition:transform .14s var(--ease-out)}
@@ -946,7 +948,7 @@ function validatePlan(p){
   return {errors,warnings};
 }
 function applyPlan(p){
-  PLAN=p;planError=null;
+  PLAN=p;planError=null;fisMode=null;
   COURSES=p.cursos.map(c=>({id:c.id,n:c.nombre,cr:c.creditos,ci:c.ciclo,req:c.requisitos||[],groups:c.grupos||[],m:c.modulo,slot:c.bloque,grp:c.excluyeCon,corto:c.corto,note:c.nota,min:c.minCreditos,
     opts:c.opciones||[],cod:c.codigo,area:c.area||(c.bloque?"SEL":"ING"),
     ask:(c.preguntar||[]).map(q=>q.curso),why:Object.fromEntries((c.preguntar||[]).map(q=>[q.curso,q.porque||""]))}));
@@ -1265,7 +1267,10 @@ const fxSin=id=>{const r=vistaFlujo()&&renInfo();return !!(r&&r.sin.has(id));};
 let elSlot=null;
 function fxElecs(){
   const L=EL(),B=(FX&&FX.el)||[];
-  return B.map((b,i)=>({b,i,e:L[i]||null,extra:i===B.length-1&&L.length>B.length?L.length-B.length:0}));
+  /* El flujograma muestra los electivos que pide el plan. «+N más» solo aparece si con las cajas no se llega a los créditos
+     requeridos (electivos de pocos créditos); los electivos que pasan de lo requerido se ven en la pestaña Electivos. */
+  const enCajas=L.slice(0,B.length).reduce((a,e)=>a+(+e.cr||0),0),falta=enCajas<ELECT_REQ;
+  return B.map((b,i)=>({b,i,e:L[i]||null,extra:falta&&i===B.length-1&&L.length>B.length?L.length-B.length:0}));
 }
 /* Ruta de una flecha: la precalculada (ortogonal, sobre las posiciones oficiales) o un codo simple si falta. */
 function fxPts(e){
@@ -2406,6 +2411,7 @@ function renderElPanel(a){
       <label class="field">Estado<select id="el-st"><option value="p">Pendiente</option><option value="c">Llevando</option><option value="a">Aprobado</option></select></label></div>
       <button class="btn" type="submit">Agregar electivo</button></form>`}
   <p class="small muted">Llevas <b>${t}</b> de ${ELECT_REQ} créditos electivos.${nota?" "+esc(nota):""}</p>
+  ${(()=>{const n=electExtra().size;return n?`<p class="small">Además llevas ${n} ${n===1?"electivo adicional":"electivos adicionales"}, por encima de lo que pide tu plan. Los ves en «Electivos».</p>`:"";})()}
   <button class="lnk" type="button" data-tab="electivos" style="justify-self:start">Ver todos mis electivos</button></div>`;
 }
 function openElSlot(i){focusId=null;const sl=fxElecs()[i];if(sl&&!sl.e)i=Math.min(i,EL().length);/* lo nuevo entra en la primera caja libre */elSlot=i;renderPanel();applyFocus();const c=document.getElementById(fxElecs()[i]&&fxElecs()[i].e?"dlg-x":"el-name")||document.getElementById("dlg-x");if(c)c.focus({preventScroll:true});}
@@ -2761,15 +2767,18 @@ function viewEgreso(){
     <ul class="egl">${items.map(i=>i.chk?`<li class="${i.ok?"y":"n"}"><label class="egc"><input type="checkbox" id="r-${esc(i.chk)}" data-r="${esc(i.chk)}"${i.ok?" checked":""}><span><b>${i.t}</b><span class="small muted">${i.d}</span></span></label></li>`:`<li class="${i.ok?"y":"n"}"><span class="egk" aria-hidden="true">${i.ok?CHECK:""}</span><span><b>${i.t}</b><span class="small muted">${i.d}</span></span>${i.tab?`<button class="lnk small" type="button" data-tab="${i.tab}">${i.go}</button>`:i.anchor?`<button class="lnk small" type="button" data-jump="${i.anchor}">Ver abajo</button>`:""}</li>`).join("")}</ul><p class="small muted">${esc(PLAN.egresoNota||"")}</p></section>
   <div id="efe">${efeSection()}</div>`;
 }
+/* Electivos que pasan de los créditos que pide el plan: se pueden llevar, pero no hacen falta para cumplir el requisito. */
+function electExtra(){let acc=0;const out=new Set();EL().forEach(e=>{if(acc>=ELECT_REQ)out.add(e.id);acc+=+e.cr||0;});return out;}
 function viewElect(){
-  const k=credits();
+  const k=credits(),xtra=electExtra();
   const taken=new Set(COURSES.filter(x=>x.slot&&S.blocks[x.id]).map(x=>S.blocks[x.id]));
   const blockOptions=Object.values(SLOTS).flat().filter(n=>!taken.has(n));
-  const rows=S.elect.map(e=>{const d=dupElect(e);return `<div class="erow${d?" dup":""}"><span class="en">${esc(e.name)} <span class="num muted small">${+e.cr} cr</span>${d?`<span class="dupn small">Ya lo elegiste en «${esc(BY[d.id].n)}». Cuenta una sola vez, como curso de bloque; puedes quitarlo de aquí.</span>`:(()=>{const bo=blockOfCod(e.cod);return bo.length?`<span class="bnote small">También es opción del bloque «${esc(bo.join("» o «"))}». Si lo eliges ahí, cuenta como curso de bloque y no como electivo.</span>`:"";})()}</span>
+  const rows=S.elect.map(e=>{const d=dupElect(e);return `<div class="erow${d?" dup":""}"><span class="en">${esc(e.name)} <span class="num muted small">${+e.cr} cr</span>${!d&&xtra.has(e.id)?` <span class="xtag small">Adicional</span>`:""}${d?`<span class="dupn small">Ya lo elegiste en «${esc(BY[d.id].n)}». Cuenta una sola vez, como curso de bloque; puedes quitarlo de aquí.</span>`:(()=>{const bo=blockOfCod(e.cod);return bo.length?`<span class="bnote small">También es opción del bloque «${esc(bo.join("» o «"))}». Si lo eliges ahí, cuenta como curso de bloque y no como electivo.</span>`:"";})()}</span>
     <span class="seg" role="group" aria-label="Estado de ${esc(e.name)}">${[["p","Pendiente"],["c","Llevando"],["a","Aprobado"]].map(([v,t])=>`<button type="button" data-es="${esc(e.id)}" data-v="${v}" aria-pressed="${e.st===v}">${t}</button>`).join("")}</span>
     <button class="lnk" type="button" data-edel="${esc(e.id)}" aria-label="Quitar ${esc(e.name)}">Quitar</button></div>`;}).join("");
   return `<section class="group elect-only">
     <div class="group-h"><h2>Electivos</h2><span class="small muted num">${k.ea+k.ec} de ${ELECT_REQ} créditos llevados o aprobados</span></div>
+    <p class="small muted" style="margin:0">Puedes llevar más electivos de los que pide tu plan. Los que pasan de los ${ELECT_REQ} créditos requeridos se marcan como «Adicional»; el flujograma solo muestra los que necesitas.</p>
     <form class="add" id="elect-form">
       <div class="field grow sugw"><label for="el-name">Curso</label><input id="el-name" required maxlength="120" placeholder="Busca o escribe el curso" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="el-sug" autocomplete="off"><ul class="sug" id="el-sug" role="listbox" hidden></ul></div>
       ${(ELOPTS=[...new Set([...blockOptions,...electiveNames()])]).length?"":""}
@@ -2785,7 +2794,37 @@ function viewElect(){
   <div class="foot"><span class="small muted">${esc(PLAN.fuente||"")}</span>
     ${confirmReset?`<span class="q-actions" style="align-items:center"><span class="small">¿Borrar el progreso de ${esc(S.nombre)}?</span><button class="btn danger" type="button" id="reset-yes">Sí, borrar</button><button class="btn ghost" type="button" id="reset-no">Cancelar</button></span>`:`<button class="btn ghost" type="button" id="reset">Borrar progreso</button>`}</div>`;
 }
+/* Física en las Mallas 2022 de ingeniería (Normas PE 2027 de Ing. Empresarial, C. Específicas 6; Alvaro confirmó que
+   también aplica a Ing. de la Información): quien no aprobó Física (5 cr) antes de 2027-I lleva Física (3 cr) y Sistemas
+   Electrónicos (3 cr), y el crédito de más reduce en 1 los electivos. Si ya la aprobó (o la está llevando antes de 2027-I),
+   cuenta como ambas. Sistemas Electrónicos se dibuja a la derecha de Física (el flujograma oficial 2022 no la tiene). */
+const FIS_SPLIT={"up-ing-empresarial-2022":[1797,20,189,94.3],"up-ing-informacion-2022":[2050,20,180,50]};
+let fisMode=null;
+function fisSync(){
+  const pos=PLAN&&FIS_SPLIT[PLAN.id],f=BY.fis;
+  let mode=null;
+  if(pos&&f&&S){const st=S.st.fis;mode=st==="a"||(st==="c"&&Date.now()<Date.parse("2027-03-01"))?"antes":"dividida";}
+  const key=(PLAN&&PLAN.id)+":"+mode;
+  if(key!==fisMode){
+    fisMode=key;
+    COURSES=COURSES.filter(x=>x.id!=="se"||!x.fisNorma);if(BY.se&&BY.se.fisNorma)delete BY.se;
+    if(f){if(f.cr0==null){f.cr0=f.cr;f.note0=f.note;}f.cr=f.cr0;f.note=f.note0;}
+    ELECT_REQ=(PLAN&&PLAN.creditos&&PLAN.creditos.electivos)||0;
+    if(mode){
+      const nota="Norma de transición: si no apruebas Física (5 cr) antes de 2027-I, llevas Física (3 cr) y Sistemas Electrónicos (3 cr); el crédito de más reduce en 1 los electivos que se piden. Si ya la aprobaste, cuenta como ambas.";
+      f.note=(f.note0?f.note0+" ":"")+nota;
+      if(mode==="dividida"){
+        f.cr=3;
+        const se={id:"se",n:"Sistemas Electrónicos",cr:3,ci:f.ci+1,req:["fis"],groups:[],opts:[],area:f.area,ask:[],why:{},note:nota,fisNorma:true};
+        COURSES.push(se);BY.se=se;ELECT_REQ=Math.max(0,ELECT_REQ-1);
+      }
+    }
+    Object.keys(DEPTH).forEach(k=>delete DEPTH[k]);
+  }
+  if(pos&&FX&&FXplan===PLAN.id&&FX.n){if(mode==="dividida"){if(!FX.n.se)FX.n.se=[...pos,(FX.n.fis&&FX.n.fis[4])||0];}else delete FX.n.se;}
+}
 function render(){
+  fisSync();
   const act=document.activeElement&&document.activeElement.id;
   if(curUser&&S&&S.prev&&S.prev.plan&&S.prev.plan!==S.plan){const o={...(S.otros||{})};if(!o[S.prev.plan])o[S.prev.plan]=S.prev.data;S.otros=o;delete S.prev;persist();}
   TABS=TABS_ALL.filter(t=>t[0]!=="comparar"||(planReady()&&hasPair()));
@@ -3040,14 +3079,14 @@ document.addEventListener("click",e=>{
 function menuOpen(){const w=document.getElementById("who");return !!w&&w.classList.contains("open");}
 function openMenu(fromTour){
   const w=document.getElementById("who"),b=document.getElementById("mnu-b");if(!w||b.hidden)return;
-  w.classList.add("open");b.setAttribute("aria-expanded","true");
+  w.classList.add("open");b.setAttribute("aria-expanded","true");document.getElementById("top").classList.add("mopen");
   document.getElementById("mnu-scrim").hidden=fromTour||innerWidth>900;
   if(!fromTour&&document.documentElement.dataset.im==="k"){const f=[...document.querySelectorAll("#mnu select,#mnu button")].find(x=>!x.hidden&&!x.disabled);if(f)f.focus();}
 }
 function closeMenu(focus){
   const w=document.getElementById("who"),b=document.getElementById("mnu-b");if(!w)return;
   const had=w.contains(document.activeElement);
-  w.classList.remove("open");b.setAttribute("aria-expanded","false");document.getElementById("mnu-scrim").hidden=true;
+  w.classList.remove("open");b.setAttribute("aria-expanded","false");document.getElementById("top").classList.remove("mopen");document.getElementById("mnu-scrim").hidden=true;
   if((focus||had)&&!b.hidden)b.focus({preventScroll:true});
 }
 document.addEventListener("click",e=>{
