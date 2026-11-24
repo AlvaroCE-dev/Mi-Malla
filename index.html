@@ -543,10 +543,12 @@ html.vt-tab::view-transition-new(tour){animation:none}
 @media (pointer:coarse){.btn.small,.recb{min-height:44px}}
 
 #tour{position:fixed;inset:0;z-index:20}
-.t-shade{position:absolute;inset:0;background:var(--scrim)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-shade{background:rgba(0,0,0,.68)}}
-:root[data-theme="dark"] .t-shade{background:rgba(0,0,0,.68)}
-.t-spot{position:absolute;border-radius:14px;box-shadow:0 0 0 3px var(--sun);pointer-events:none;animation:tspot .2s var(--ease-out)}
+/* La sombra son 4 franjas alrededor del marco: no se recorta ni se repinta una capa del tamaño de la pantalla en cada cuadro. */
+.t-shade{position:absolute;inset:0;pointer-events:none}
+.t-shade i{position:absolute;left:0;top:0;width:0;height:0;background:var(--scrim);pointer-events:auto}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-shade i{background:rgba(0,0,0,.68)}}
+:root[data-theme="dark"] .t-shade i{background:rgba(0,0,0,.68)}
+.t-spot{position:absolute;border-radius:6px;box-shadow:0 0 0 3px var(--sun);pointer-events:none;animation:tspot .2s var(--ease-out)}
 @keyframes tspot{from{opacity:0}}
 .t-card{position:absolute;width:380px;max-width:calc(100vw - 24px);background:var(--surface);color:var(--ink);border-radius:16px;padding:12px 14px 14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.32);display:grid;gap:6px;animation:tin .2s var(--ease-out)}
 .t-card[data-center]{left:50%;top:50%;transform:translate(-50%,-50%);animation:tinc .2s var(--ease-out)}
@@ -575,9 +577,8 @@ body.touring main{padding-bottom:70vh}
  .t-card[data-dock="top"]{top:calc(12px + env(safe-area-inset-top,0px))!important}
 }
 /* La guía viaja: el marco, la sombra y la tarjeta se deslizan al siguiente lugar (0,4 s) y el texto cambia con un fundido corto. */
-.t-spot{transition:left .38s cubic-bezier(.23,1,.32,1),top .38s cubic-bezier(.23,1,.32,1),width .38s cubic-bezier(.23,1,.32,1),height .38s cubic-bezier(.23,1,.32,1)}
 .t-spot.snap,.t-card.snap{transition:none}
-.t-shade{transition:clip-path .38s cubic-bezier(.23,1,.32,1);animation:tshade .3s ease-out}
+.t-shade{animation:tshade .3s ease-out}
 @keyframes tshade{from{opacity:0}}
 .t-card{transition:left .38s cubic-bezier(.23,1,.32,1),top .38s cubic-bezier(.23,1,.32,1)}
 .t-card.swap>*{animation:tfade .22s ease-out}
@@ -1330,10 +1331,10 @@ function viewFlujo(){
 /* Encuadre y movimiento */
 function fxApply(){
   const g=document.getElementById("fx-g"),wrap=document.getElementById("fx");if(!g||!wrap||!FX)return;
-  const T=fxT[PLAN.id];fxClamp(T,wrap);g.setAttribute("transform",`translate(${T.x} ${T.y}) scale(${T.s})`);fxTipPos();try{if(TOUR&&TOUR.el&&wrap.contains(TOUR.el))placeTour();}catch(e){}
+  const T=fxT[PLAN.id];fxClamp(T,wrap);g.setAttribute("transform",`translate(${T.x} ${T.y}) scale(${T.s})`);fxTipPos();try{if(TOUR&&TOUR.el&&wrap.contains(TOUR.el))tourSoon();}catch(e){}
   /* El ✓ de los aprobados mantiene un tamaño visible aunque el flujograma esté alejado. */
   const ck=Math.min(2.4,Math.max(1,.75/T.s)).toFixed(1);if(wrap.dataset.ck!==ck){wrap.dataset.ck=ck;wrap.style.setProperty("--ck",ck);}
-  document.querySelectorAll("#fx-cyc span").forEach(s=>{const x=+s.dataset.cx*T.s+T.x;s.style.transform=`translateX(${x}px) translateX(-50%)`;s.hidden=x<-60||x>wrap.clientWidth+60;});
+  document.querySelectorAll("#fx-cyc span").forEach(s=>{const x=+s.dataset.cx*T.s+T.x;s.style.transform=`translateX(${x}px) translateX(-50%)`;s.hidden=x<-60||x>fxWH(wrap)[0]+60;});
 }
 function fxFit(todo){
   const wrap=document.getElementById("fx");if(!wrap||!FX)return;
@@ -1346,8 +1347,9 @@ function fxFit(todo){
   fxT[PLAN.id]={s,x:Math.max(W-FX.w*s-12,x0),y:y0};fxApply();
 }
 /* El flujograma no se puede perder de vista: siempre queda al menos el 40 % del ancho/alto visible. */
+const fxWH=wrap=>{if(!wrap._wh){wrap._wh=[wrap.clientWidth,wrap.clientHeight];if(window.ResizeObserver&&!wrap._ro){wrap._ro=new ResizeObserver(()=>{wrap._wh=null;});wrap._ro.observe(wrap);}}return wrap._wh;};
 function fxClamp(T,wrap){
-  const W=wrap.clientWidth,H=wrap.clientHeight,cw=FX.w*T.s,ch=FX.h*T.s;
+  const [W,H]=fxWH(wrap),cw=FX.w*T.s,ch=FX.h*T.s;
   const lim=(v,lo,hi)=>lo>hi?(lo+hi)/2:Math.min(hi,Math.max(lo,v));
   T.x=lim(T.x,W*.4-cw,W*.6);T.y=lim(T.y,H*.4-ch,H*.6);
 }
@@ -2839,6 +2841,7 @@ addEventListener("keydown",e=>{if(!e.metaKey&&!e.ctrlKey&&!e.altKey)document.doc
 function tryTour(){if(tourPending&&planReady()&&S&&!(S.guia&&S.guia.tour)&&!(tab==="malla"&&vistaFlujo()&&FXplan!==PLAN.id)){tourPending=false;startTour();}}
 function startTour(){TSTEPS=tsteps();const rm=matchMedia("(prefers-reduced-motion:reduce)").matches;TOUR={i:0,back:document.activeElement,forced:true,intro:!rm};S.guia.tour=true;persist();document.body.classList.add("touring");if(rm)showStep();else{const T0=TOUR;setTimeout(()=>{if(TOUR===T0)showStep();},600);}}
 function endTour(){
+  TV=null;if(TVraf){cancelAnimationFrame(TVraf);TVraf=0;}
   if(TOUR&&TOUR.det)tourDet(null);
   if(TOUR&&TOUR.menu){TOUR.menu=false;closeMenu();}
   if(TOUR&&TOUR.opened){focusId=null;renderPanel();applyFocus();}
@@ -2850,7 +2853,7 @@ function endTour(){
 function tourFrame(noSpot,o,html){
   const t=document.getElementById("tour");let sh=t.querySelector(".t-shade"),sp=t.querySelector(".t-spot"),cd=t.querySelector(".t-card");
   const had=!!cd;
-  if(!had){t.innerHTML=`<div class="t-shade"></div><div class="t-spot snap"></div><div class="t-card snap" role="dialog" aria-modal="true" aria-labelledby="t-tt" tabindex="-1"></div>`;sh=t.querySelector(".t-shade");sp=t.querySelector(".t-spot");cd=t.querySelector(".t-card");requestAnimationFrame(()=>requestAnimationFrame(()=>{sp.classList.remove("snap");cd.classList.remove("snap");}));}
+  if(!had){t.innerHTML=`<div class="t-shade"><i></i><i></i><i></i><i></i></div><div class="t-spot snap"></div><div class="t-card snap" role="dialog" aria-modal="true" aria-labelledby="t-tt" tabindex="-1"></div>`;sh=t.querySelector(".t-shade");sp=t.querySelector(".t-spot");cd=t.querySelector(".t-card");requestAnimationFrame(()=>requestAnimationFrame(()=>{sp.classList.remove("snap");cd.classList.remove("snap");}));}
   TOUR.noSpot=noSpot;
   const wasHidden=sp.hidden;sp.hidden=noSpot;
   if(had&&wasHidden&&!noSpot){sp.classList.add("snap");requestAnimationFrame(()=>requestAnimationFrame(()=>sp.classList.remove("snap")));}
@@ -2866,10 +2869,34 @@ function tourDet(keys){
   if(keys&&TOUR){TOUR.det=keys.map(k=>{const d=document.querySelector(`details[data-keep="${k}"]`);const o=!!(d&&d.open);if(d)d.open=true;return [k,o];});}
 }
 function tourPrev(){if(TOUR.part){TOUR.part--;showStep();return;}if(!TOUR.i)return;TOUR.i--;const p=TSTEPS[TOUR.i].parts;TOUR.part=p?p.length-1:0;showStep();}
+/* El marco y el hueco de la sombra se mueven juntos con un solo bucle: cada cuadro avanzan una fracción hacia el destino
+   (si el destino cambia a mitad de camino, siguen sin tirones). Antes eran transiciones CSS del recorte de la sombra, que se
+   reiniciaban en cada cuadro y podían agotar el navegador. */
+let TV=null,TVraf=0,TVlast=0;
+function tourBox(box,snap){
+  if(!TOUR)return;TOUR.tgt=box;
+  if(snap||!TV||matchMedia("(prefers-reduced-motion:reduce)").matches){TV={...box};tourPaint();return;}
+  if(!TVraf){TVlast=0;TVraf=requestAnimationFrame(tourStepBox);}
+}
+function tourStepBox(t){
+  TVraf=0;if(!TOUR||!TOUR.tgt||!TV)return;
+  const dt=TVlast?Math.min(50,t-TVlast):16;TVlast=t;const a=1-Math.exp(-dt/80),g=TOUR.tgt;let done=true;
+  for(const k of ["x","y","w","h"]){const d=g[k]-TV[k];if(Math.abs(d)>.5){TV[k]+=d*a;done=false;}else TV[k]=g[k];}
+  tourPaint();if(!done)TVraf=requestAnimationFrame(tourStepBox);
+}
+function tourFull(){const sh=document.querySelector("#tour .t-shade");if(!sh||sh.children.length!==4)return;const [a,b,c,d]=sh.children;a.style.cssText="left:0;top:0;width:100%;height:100%";b.style.cssText=c.style.cssText=d.style.cssText="";}
+function tourPaint(){
+  const t=document.getElementById("tour"),sp=t&&t.querySelector(".t-spot"),sh=t&&t.querySelector(".t-shade");if(!sp||!TV)return;
+  const {x,y,w,h}=TV,vw=innerWidth,vh=innerHeight;
+  sp.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+  if(sh&&sh.children.length===4){const [a,b,c,d]=sh.children,X=Math.round(x),Y=Math.round(y),R=Math.round(x+w),B=Math.round(y+h);
+    const put=(e,l,t,w,h)=>{e.style.cssText=`left:${l}px;top:${t}px;width:${Math.max(0,w)}px;height:${Math.max(0,h)}px`;};
+    put(a,0,0,vw,Y);put(b,0,B,vw,vh-B);put(c,0,Y,X,B-Y);put(d,R,Y,vw-R,B-Y);}
+}
 function tourTrack(ms){if(!TOUR)return;const end=performance.now()+ms,T0=TOUR;const f=()=>{if(TOUR!==T0)return;placeTour();if(performance.now()<end)requestAnimationFrame(f);};requestAnimationFrame(f);}
 function tourPhaseB(){if(!TOUR||!TOUR.phaseA)return;const id=TOUR.phaseA;TOUR.phaseA=null;openCourse(id);TOUR.opened=true;showStep();}
 function fxZoomTo(id,ms){const wrap=document.getElementById("fx"),n=FX&&FX.n[id],T=FX&&fxT[PLAN.id];if(!wrap||!n||!T)return;const v=fxVisible(),s=Math.min(Math.max(T.s,.9),1.3),cx=(v.left+v.right)/2-v.r.left,cy=(v.top+v.bot)/2-v.r.top;fxGo({s,x:cx-(n[0]+n[2]/2)*s,y:cy-(n[1]+n[3]/2)*s},ms||300);}
-function tourTarget(st){if(!st.sel)return null;const all=[...document.querySelectorAll(st.sel)].filter(e=>{if(!e.offsetParent&&getComputedStyle(e).position!=="fixed")return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});return all[0]||(st.alt&&document.querySelector(st.alt))||null;}
+function tourTarget(st){if(!st.sel)return null;const all=[...document.querySelectorAll(st.sel)].filter(e=>{if(!e.offsetParent&&getComputedStyle(e).position!=="fixed")return false;const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});const al=st.alt&&document.querySelector(st.alt),ar=al&&al.getBoundingClientRect();return all[0]||(ar&&ar.width&&ar.height?al:null);}
 function tourMove(st,seq){
   const T0=TOUR;
   const b=document.querySelector(`#tabs [data-tab="${st.tab}"]`),T=TABS.find(x=>x[0]===st.tab),n=TSTEPS.length,t=document.getElementById("tour");
@@ -2894,7 +2921,7 @@ function showStep(){
   if(tab!==st.tab&&TOUR.i>0){tourMove(st,seq);return;}
   if(tab!==st.tab){go(st.tab);}
   let el=null,pa=null;
-  if(st.first&&!TOUR.opened&&tab===st.tab&&vistaFlujo()&&FX&&!document.querySelector(".fx-n[data-fx]")&&(TOUR.esp=(TOUR.esp||0)+1)<40){
+  if(st.first&&!TOUR.opened&&tab===st.tab&&vistaFlujo()&&flujoData()!==null&&(!FX||FXplan!==PLAN.id||!document.querySelector(".fx-n[data-fx]"))&&(TOUR.esp=(TOUR.esp||0)+1)<60){
     TOUR.seq--;setTimeout(()=>{if(TOUR===T0)showStep();},100);return;}
   if(st.first&&!TOUR.opened){
     /* Fase A: se resalta un curso del primer ciclo; tras un momento se abre su panel solo (fase B). */
@@ -2902,7 +2929,7 @@ function showStep(){
     let wait=0;TOUR.intro=TOUR.intro&&!!id;
     if(id){pa=id;TOUR.phaseA=id;
       if(f){const wp=document.querySelector(".fx-wrap");if(wp)tourScroll(wp);
-        if(TOUR.intro&&wp){TOUR.intro=false;el=wp;wait=1300;setTimeout(()=>{if(TOUR!==T0||TOUR.seq!==seq||TOUR.phaseA!==id)return;fxZoomTo(id,600);TOUR.el=document.querySelector(`.fx-n[data-fx="${id}"]`);tourTrack(700);},700);}
+        if(TOUR.intro&&wp){TOUR.intro=false;el=wp;wait=1600;setTimeout(()=>{if(TOUR!==T0||TOUR.seq!==seq||TOUR.phaseA!==id)return;fxZoomTo(id,600);TOUR.el=document.querySelector(`.fx-n[data-fx="${id}"]`);tourTrack(700);},1000);}
         else{fxZoomTo(id);el=document.querySelector(`.fx-n[data-fx="${id}"]`);}}
       else{el=c;tourScroll(el);}
       setTimeout(()=>{if(TOUR===T0&&TOUR.seq===seq&&TOUR.phaseA===id)tourPhaseB();},2200+wait);}
@@ -2953,8 +2980,8 @@ function placeTour(){
   if(!TOUR)return;
   const t=document.getElementById("tour"),sp=t.querySelector(".t-spot"),card=t.querySelector(".t-card"),sh=t.querySelector(".t-shade"),el=TOUR.el;
   if(!sp||!card)return;
-  if(el&&el.isConnected){const z=el.getBoundingClientRect();if(!z.width&&!z.height){sp.hidden=true;return;}if(sp.hidden&&!TOUR.noSpot){sp.hidden=false;sp.classList.add("snap");requestAnimationFrame(()=>requestAnimationFrame(()=>sp.classList.remove("snap")));}}
-  if(!el||!el.isConnected){card.style.top="";card.style.left="";delete card.dataset.dock;if(sh)sh.style.clipPath="";return;}
+  if(el&&el.isConnected){const z=el.getBoundingClientRect();if(!z.width&&!z.height){sp.hidden=true;tourFull();TV=null;card.style.top="";card.style.left="";delete card.dataset.dock;card.setAttribute("data-center","");return;}if(sp.hidden&&!TOUR.noSpot){sp.hidden=false;sp.classList.add("snap");requestAnimationFrame(()=>requestAnimationFrame(()=>sp.classList.remove("snap")));}}
+  if(!el||!el.isConnected){card.style.top="";card.style.left="";delete card.dataset.dock;tourFull();TV=null;return;}
   const vw=innerWidth,vh=innerHeight,safeB=parseFloat(getComputedStyle(document.documentElement).paddingBottom)||0;
   const fx=tourFixed(el),panel=fx&&fx.id==="panel"?fx.getBoundingClientRect():null,inTabs=!!el.closest("#tabband");
   const minTop=inTabs?12:tourHead()+8;let r=el.getBoundingClientRect();
@@ -2976,9 +3003,9 @@ function placeTour(){
   let bot=uni?r.bottom:tourFit(el,maxB);if(bot==null)bot=r.bottom;
   const top=Math.max(4,r.top-T_PAD),box={x:Math.max(4,r.left-T_PAD),y:top,w:Math.min(vw-8,r.right+T_PAD)-Math.max(4,r.left-T_PAD),h:Math.min(vh-4,bot+T_PAD)-top};
   TOUR.clip=bot<r.bottom-1;
-  Object.assign(sp.style,{left:box.x+"px",top:box.y+"px",width:box.w+"px",height:box.h+"px"});
+  tourBox(box,sp.classList.contains("snap"));
   /* La sombra es una capa del tamaño de la pantalla con un hueco recortado: pintar una sombra gigante trababa la página. */
-  if(sh){const{x,y,w,h}=box,q=Math.min(14,w/2,h/2);sh.style.clipPath=`path(evenodd,"M0 0H${vw}V${vh}H0Z M${x+q} ${y}H${x+w-q}A${q} ${q} 0 0 1 ${x+w} ${y+q}V${y+h-q}A${q} ${q} 0 0 1 ${x+w-q} ${y+h}H${x+q}A${q} ${q} 0 0 1 ${x} ${y+h-q}V${y+q}A${q} ${q} 0 0 1 ${x+q} ${y}Z")`;}
+
   if(mob)return;
   const clampY=v=>Math.min(Math.max(minTop,v),vh-ch-12),clampX=v=>Math.min(Math.max(12,v),vw-cw-12);
   let L,Tp;
@@ -2989,7 +3016,8 @@ function placeTour(){
   else{L=clampX(box.x);Tp=box.y+box.h+T_GAP;if(Tp+ch>vh-12){const up=box.y-ch-T_GAP;Tp=up>=minTop?up:vh-ch-12;}}
   card.style.left=L+"px";card.style.top=Tp+"px";
 }
-addEventListener("scroll",()=>{if(TOUR)placeTour();},{passive:true});
+let tourRaf=0;const tourSoon=()=>{if(!tourRaf)tourRaf=requestAnimationFrame(()=>{tourRaf=0;placeTour();});};
+addEventListener("scroll",()=>{if(TOUR)tourSoon();},{passive:true});
 document.addEventListener("keydown",e=>{
   if(!TOUR)return;
   if(e.key==="Escape"){e.preventDefault();e.stopPropagation();if(!TOUR.forced)endTour();return;}
